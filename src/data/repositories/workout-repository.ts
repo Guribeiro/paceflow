@@ -41,6 +41,8 @@ export interface WorkoutRepository {
   /** Inclui treinos removidos (soft delete). */
   listAll(): Workout[];
   getById(id: string): Workout | undefined;
+  /** O registro como está gravado, inclusive se removido (o sync precisa propagar exclusões). */
+  getRecord(id: string): Workout | undefined;
   create(input: NewWorkout): Result<Workout, WorkoutError>;
   update(id: string, patch: WorkoutPatch): Result<Workout, WorkoutError>;
   remove(id: string): boolean;
@@ -48,7 +50,7 @@ export interface WorkoutRepository {
    * Mescla treinos de um backup: adiciona os novos e, para o mesmo id, fica a
    * versão com updatedAt mais recente (inclusive contra remoções locais).
    */
-  importWorkouts(workouts: readonly Workout[]): ImportSummary;
+  importWorkouts(workouts: readonly Workout[], options?: ImportOptions): ImportSummary;
   subscribe(listener: () => void): () => void;
 }
 
@@ -58,9 +60,16 @@ export interface ImportSummary {
   unchanged: number;
 }
 
+export interface ImportOptions {
+  /** 'remote' = veio do servidor: não conta como alteração local a enviar. */
+  origin?: 'file' | 'remote';
+}
+
 export interface RepositoryDeps {
   generateId?: () => string;
   now?: () => string;
+  /** Chamado com os ids alterados localmente (o sync os marca como pendentes). */
+  onLocalChange?: (ids: string[]) => void;
 }
 
 function validate(input: NewWorkout): WorkoutError | null {
@@ -103,7 +112,7 @@ function parseWorkout(raw: string | undefined): Workout | null {
 
 export function createWorkoutRepository(
   storage: KeyValueStorage,
-  { generateId = randomUUID, now = () => new Date().toISOString() }: RepositoryDeps = {},
+  { generateId = randomUUID, now = () => new Date().toISOString(), onLocalChange }: RepositoryDeps = {},
 ): WorkoutRepository {
   const listeners = new Set<() => void>();
   let cachedAll: Workout[] | null = null;
@@ -133,9 +142,10 @@ export function createWorkoutRepository(
     return cachedActive;
   }
 
-  function changed() {
+  function changed(localIds: string[] = []) {
     cachedAll = null;
     cachedActive = null;
+    if (localIds.length > 0) onLocalChange?.(localIds);
     listeners.forEach((listener) => listener());
   }
 
@@ -148,6 +158,10 @@ export function createWorkoutRepository(
       return workout && workout.deletedAt === null ? workout : undefined;
     },
 
+    getRecord(id) {
+      return parseWorkout(storage.getString(recordKey(id))) ?? undefined;
+    },
+
     create(input) {
       const error = validate(input);
       if (error) return err(error);
@@ -157,7 +171,7 @@ export function createWorkoutRepository(
 
       storage.set(recordKey(workout.id), JSON.stringify(workout));
       storage.set(INDEX_KEY, JSON.stringify([...readIndex(), workout.id]));
-      changed();
+      changed([workout.id]);
       return ok(workout);
     },
 
@@ -178,7 +192,7 @@ export function createWorkoutRepository(
 
       const workout = toRecord(merged, { id, createdAt: current.createdAt, updatedAt: now() });
       storage.set(recordKey(id), JSON.stringify(workout));
-      changed();
+      changed([id]);
       return ok(workout);
     },
 
@@ -187,12 +201,13 @@ export function createWorkoutRepository(
       if (!workout || workout.deletedAt !== null) return false;
       const timestamp = now();
       storage.set(recordKey(id), JSON.stringify({ ...workout, deletedAt: timestamp, updatedAt: timestamp }));
-      changed();
+      changed([id]);
       return true;
     },
 
-    importWorkouts(workouts) {
+    importWorkouts(workouts, { origin = 'file' } = {}) {
       const summary: ImportSummary = { added: 0, updated: 0, unchanged: 0 };
+      const changedIds: string[] = [];
       const index = readIndex();
       const known = new Set(index);
 
@@ -207,13 +222,14 @@ export function createWorkoutRepository(
           index.push(incoming.id);
           known.add(incoming.id);
         }
+        changedIds.push(incoming.id);
         if (current) summary.updated++;
         else summary.added++;
       }
 
-      if (summary.added + summary.updated > 0) {
+      if (changedIds.length > 0) {
         storage.set(INDEX_KEY, JSON.stringify(index));
-        changed();
+        changed(origin === 'remote' ? [] : changedIds);
       }
       return summary;
     },

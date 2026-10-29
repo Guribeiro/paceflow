@@ -210,6 +210,76 @@ describe('WorkoutRepository', () => {
     });
   });
 
+  describe('rastreio de alterações locais (sync)', () => {
+    function setupTracked() {
+      const changes: string[][] = [];
+      const storage = new InMemoryStorage();
+      let seq = 0;
+      const repo = createWorkoutRepository(storage, {
+        generateId: () => `id-${++seq}`,
+        now: () => '2026-10-29T10:00:00.000Z',
+        onLocalChange: (ids) => changes.push([...ids]),
+      });
+      return { repo, changes };
+    }
+
+    const remoteWorkout = (id: string): Workout => ({
+      ...base,
+      id,
+      createdAt: '2026-10-20T10:00:00.000Z',
+      updatedAt: '2026-10-20T10:00:00.000Z',
+      deletedAt: null,
+    });
+
+    it('avisa em create, update e remove', () => {
+      const { repo, changes } = setupTracked();
+      created(repo.create(base));
+      repo.update('id-1', { rpe: 5 });
+      repo.remove('id-1');
+      expect(changes).toEqual([['id-1'], ['id-1'], ['id-1']]);
+    });
+
+    it('não avisa quando nada muda', () => {
+      const { repo, changes } = setupTracked();
+      repo.update('nope', { rpe: 5 });
+      repo.remove('nope');
+      repo.create({ ...base, distanceMeters: 0 });
+      expect(changes).toEqual([]);
+    });
+
+    it('importação de arquivo avisa só os ids que mudaram', () => {
+      const { repo, changes } = setupTracked();
+      repo.importWorkouts([remoteWorkout('a'), remoteWorkout('b')]);
+      repo.importWorkouts([remoteWorkout('a')]); // igual: não muda
+      expect(changes).toEqual([['a', 'b']]);
+    });
+
+    it('dados vindos do servidor não avisam (evita push em loop)', () => {
+      const { repo, changes } = setupTracked();
+      repo.importWorkouts([remoteWorkout('a')], { origin: 'remote' });
+      expect(changes).toEqual([]);
+      expect(repo.getById('a')).toBeDefined();
+    });
+
+    it('servidor pode propagar exclusão', () => {
+      const { repo } = setupTracked();
+      repo.importWorkouts([remoteWorkout('a')], { origin: 'remote' });
+      repo.importWorkouts(
+        [{ ...remoteWorkout('a'), updatedAt: '2026-10-21T10:00:00.000Z', deletedAt: '2026-10-21T10:00:00.000Z' }],
+        { origin: 'remote' },
+      );
+      expect(repo.getById('a')).toBeUndefined();
+    });
+
+    it('getRecord devolve inclusive treinos removidos', () => {
+      const { repo } = setupTracked();
+      created(repo.create(base));
+      repo.remove('id-1');
+      expect(repo.getRecord('id-1')).toMatchObject({ id: 'id-1', deletedAt: '2026-10-29T10:00:00.000Z' });
+      expect(repo.getRecord('nope')).toBeUndefined();
+    });
+  });
+
   describe('validação', () => {
     it.each([
       [{ distanceMeters: 0 }, 'INVALID_DISTANCE'],
