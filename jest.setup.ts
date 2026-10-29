@@ -8,10 +8,14 @@ jest.mock('react-native-nitro-modules', () => ({
   },
 }));
 
-jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+jest.mock(
+  'react-native-safe-area-context',
+  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
+);
 
-// O mock do jest-expo para o expo-crypto devolve undefined em randomUUID.
+// O mock do jest-expo para o expo-crypto devolve undefined em randomUUID;
+// usa o crypto global do Node no lugar.
 jest.mock('expo-crypto', () => ({
   ...jest.requireActual('expo-crypto'),
-  randomUUID: () => require('node:crypto').randomUUID(),
+  randomUUID: () => globalThis.crypto.randomUUID(),
 }));
