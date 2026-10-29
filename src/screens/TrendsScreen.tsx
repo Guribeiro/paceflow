@@ -7,6 +7,7 @@ import { RaceGoalCard } from '../components/RaceGoalCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { Button } from '../components/ui/Button';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { tabular } from '../components/ui/typography';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
@@ -69,7 +70,7 @@ export function TrendsScreen() {
           ) : (
             <>
               <View className="gap-2">
-                <Text className="text-lg font-bold text-black dark:text-white">Distância por semana ({unit})</Text>
+                <SectionHeader>{`Distância por semana (${unit})`}</SectionHeader>
                 {/* Leitura da barra selecionada: o "tooltip" do toque. */}
                 <Text
                   accessibilityLiveRegion="polite"

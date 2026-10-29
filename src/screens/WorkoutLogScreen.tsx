@@ -7,6 +7,7 @@ import { BackupSection } from '../components/BackupSection';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
 import { tabular } from '../components/ui/typography';
 import { workoutRepository } from '../data/workouts';
 import {
@@ -127,14 +128,16 @@ function ShoeAlerts({ shoes, workouts, unit }: { shoes: Shoe[]; workouts: Workou
   if (alerts.length === 0) return null;
 
   return (
-    <View accessibilityRole="alert" className="gap-1 rounded-xl border-2 border-black p-3 dark:border-white">
+    <Card variant="inverted" accessibilityRole="alert">
       {alerts.map(({ shoe, meters }) => (
-        <Text key={shoe.id} className="text-base font-semibold text-black dark:text-white">
-          {shoeStatus(meters, shoe.limitMeters) === 'replace' ? 'Hora de trocar' : 'Perto da troca'}: {shoe.name} (
-          {formatDistance(meters, unit)} de {formatDistance(shoe.limitMeters, unit)} {unit})
+        <Text key={shoe.id} className="text-base text-neutral-200 dark:text-neutral-800">
+          <Text className="font-bold text-white dark:text-black">
+            {shoeStatus(meters, shoe.limitMeters) === 'replace' ? 'Hora de trocar' : 'Perto da troca'}
+          </Text>
+          : {shoe.name} ({formatDistance(meters, unit)} de {formatDistance(shoe.limitMeters, unit)} {unit})
         </Text>
       ))}
-    </View>
+    </Card>
   );
 }
 

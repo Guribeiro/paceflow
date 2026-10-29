@@ -1,4 +1,5 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
 import { workoutRepository } from '../../data/workouts';
@@ -46,7 +47,10 @@ describe('Prova-alvo na Evolução', () => {
     ).toBeOnTheScreen();
   });
 
-  it('valida a data digitada e remove a prova', async () => {
+  it('valida a data digitada e remove a prova após confirmação', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === 'Remover')?.onPress?.();
+    });
     const user = userEvent.setup();
     await render(<TrendsScreen />);
     await user.press(screen.getByRole('button', { name: 'Definir prova-alvo' }));
@@ -57,8 +61,20 @@ describe('Prova-alvo na Evolução', () => {
     await user.clear(screen.getByLabelText('Data da prova (dd/mm/aaaa)'));
     await user.type(screen.getByLabelText('Data da prova (dd/mm/aaaa)'), ddmmyyyy(daysFromNow(20)));
     await user.press(screen.getByRole('button', { name: 'Salvar prova' }));
-    await user.press(screen.getByRole('button', { name: 'Remover' }));
+    await user.press(screen.getByRole('button', { name: 'Remover prova' }));
+    expect(alert).toHaveBeenCalledTimes(1);
     expect(preferencesRepository.getRaceGoal()).toBeNull();
     expect(screen.getByRole('button', { name: 'Definir prova-alvo' })).toBeOnTheScreen();
+  });
+
+  it('cancelar a confirmação mantém a prova', async () => {
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    preferencesRepository.setRaceGoal({ distanceKm: 10, date: ddmmyyyy(daysFromNow(30)).split('/').reverse().join('-') });
+    const user = userEvent.setup();
+    await render(<TrendsScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Remover prova' }));
+
+    expect(preferencesRepository.getRaceGoal()).not.toBeNull();
   });
 });

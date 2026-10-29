@@ -10,6 +10,7 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { ProgressBar } from './ui/ProgressBar';
+import { SectionHeader } from './ui/SectionHeader';
 
 const STATUS_LABEL: Record<ShoeStatus, string> = {
   ok: '',
@@ -131,7 +132,7 @@ export function ShoesSection({ unit }: { unit: DistanceUnit }) {
 
   return (
     <View className="gap-2">
-      <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Tênis</Text>
+      <SectionHeader>Tênis</SectionHeader>
       {shoes.length === 0 && !adding ? (
         <Text className="text-base text-neutral-700 dark:text-neutral-300">
           Cadastre seus tênis para acompanhar quantos km cada par já rodou.

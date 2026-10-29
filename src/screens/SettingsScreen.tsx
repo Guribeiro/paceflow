@@ -39,7 +39,7 @@ export function SettingsScreen() {
           <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
           <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
           <WeeklyGoalSetting unit={unit} />
-        <ShoesSection unit={unit} />
+          <ShoesSection unit={unit} />
 
           <AccountSection />
 

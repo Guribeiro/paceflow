@@ -55,6 +55,23 @@ describe('CalculatorScreen', () => {
     expect(workouts[0]).toMatchObject({ distanceMeters: 5000, durationSeconds: 1500, terrain: 'pista', rpe: 7 });
   });
 
+  it('não grava o mesmo treino duas vezes', async () => {
+    const user = await fillIn('5', '25:00');
+    await user.press(screen.getByRole('radio', { name: 'Esteira' }));
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+    const after = workoutRepository.list().length;
+
+    const saved = screen.getByRole('button', { name: 'Salvo ✓' });
+    expect(saved).toBeDisabled();
+    await user.press(saved);
+    expect(workoutRepository.list()).toHaveLength(after);
+
+    // Mudar um campo libera um novo registro.
+    await user.press(screen.getByRole('radio', { name: 'esforço 5' }));
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+    expect(workoutRepository.list()).toHaveLength(after + 1);
+  });
+
   it('registra o treino no dia escolhido, mantendo a hora atual', async () => {
     const user = await fillIn('5', '25:00');
     expect(screen.getByRole('radio', { name: 'Hoje' })).toBeChecked();

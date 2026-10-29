@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Alert, Platform, Text, View } from 'react-native';
 
 import {
   type DistanceUnit,
@@ -19,6 +19,7 @@ import { Field } from './Field';
 import { TrainingPaces } from './TrainingPaces';
 import { Button } from './ui/Button';
 import { tabular } from './ui/typography';
+import { SectionHeader } from './ui/SectionHeader';
 
 const OTHER = 'other';
 
@@ -39,6 +40,19 @@ function weeksFromNow(weeks: number): string {
   const d = new Date();
   d.setDate(d.getDate() + weeks * 7);
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function confirmRemove(label: string, onConfirm: () => void) {
+  const message = 'A contagem, a projeção e o plano somem; os treinos continuam no diário.';
+  // No react-native-web o Alert.alert não faz nada; usa o confirm do navegador.
+  if (Platform.OS === 'web') {
+    if (window.confirm(`Remover a prova (${label})?\n${message}`)) onConfirm();
+    return;
+  }
+  Alert.alert(`Remover a prova (${label})?`, message, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Remover', style: 'destructive', onPress: onConfirm },
+  ]);
 }
 
 function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null; onSave: (g: RaceGoal) => void; onCancel: () => void }) {
@@ -110,9 +124,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
   const [editing, setEditing] = useState(false);
 
   const header = (
-    <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-      Rumo à prova
-    </Text>
+    <SectionHeader>Rumo à prova</SectionHeader>
   );
 
   if (editing) {
@@ -191,14 +203,20 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
 
       {goal.targetSeconds && !summary.past ? (
         <View className="gap-2">
-          <Text className="text-lg font-bold text-black dark:text-white">Paces para a meta</Text>
+          <SectionHeader level={2}>Paces para a meta</SectionHeader>
           <TrainingPaces distanceKm={goal.distanceKm} durationSeconds={goal.targetSeconds} unit={unit} />
         </View>
       ) : null}
 
       <View className="flex-row flex-wrap gap-3">
         <Button label="Editar" variant="secondary" grow onPress={() => setEditing(true)} />
-        <Button label="Remover" variant="secondary" grow onPress={() => setGoal(null)} />
+        <Button
+          label="Remover"
+          variant="danger"
+          accessibilityLabel="Remover prova"
+          grow
+          onPress={() => confirmRemove(raceLabel(goal.distanceKm), () => setGoal(null))}
+        />
       </View>
     </View>
   );

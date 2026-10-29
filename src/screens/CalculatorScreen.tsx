@@ -22,6 +22,7 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
+import { SectionHeader } from '../components/ui/SectionHeader';
 
 
 export function CalculatorScreen() {
@@ -150,9 +151,7 @@ export function CalculatorScreen() {
               </View>
 
               <View className="gap-2">
-                <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-                  Projeção de provas
-                </Text>
+                <SectionHeader>Projeção de provas</SectionHeader>
                 {races ? (
                   <>
                     <RaceTable races={races} />
@@ -169,9 +168,7 @@ export function CalculatorScreen() {
 
               {pace && duration.ok ? (
                 <View className="gap-2">
-                  <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-                    Paces de treino
-                  </Text>
+                  <SectionHeader>Paces de treino</SectionHeader>
                   <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
                 </View>
               ) : null}

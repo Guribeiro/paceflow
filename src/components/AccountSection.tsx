@@ -6,6 +6,7 @@ import type { LastSync } from '../data/sync/sync-state';
 import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
 import { Button } from './ui/Button';
+import { SectionHeader } from './ui/SectionHeader';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -140,9 +141,7 @@ export function AccountSection() {
 
   return (
     <View className="gap-3 rounded-xl border-2 border-black p-4 dark:border-white">
-      <Text className="text-lg font-bold text-black dark:text-white" accessibilityRole="header">
-        Conta e backup na nuvem
-      </Text>
+      <SectionHeader>Conta e backup na nuvem</SectionHeader>
       {email ? <SignedIn email={email} /> : <SignInForm />}
     </View>
   );

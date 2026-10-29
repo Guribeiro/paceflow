@@ -27,6 +27,7 @@ import { Field } from './Field';
 import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { tabular } from './ui/typography';
+import { SectionHeader } from './ui/SectionHeader';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
 
@@ -47,9 +48,7 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
 
   return (
     <View className="gap-3">
-      <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-        Tempo por tiro
-      </Text>
+      <SectionHeader>Tempo por tiro</SectionHeader>
       <Field
         label={`Pace-alvo (min/${unit})`}
         value={targetText}
@@ -142,9 +141,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
 
   return (
     <View className="gap-4 rounded-xl border-2 border-black p-4 dark:border-white">
-      <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-        Registrar série
-      </Text>
+      <SectionHeader>Registrar série</SectionHeader>
 
       <ChoiceChips
         label="Distância de cada tiro"

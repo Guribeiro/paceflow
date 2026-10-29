@@ -12,6 +12,7 @@ import { Field } from './Field';
 import { Button } from './ui/Button';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
+import { SectionHeader } from './ui/SectionHeader';
 
 interface Props {
   distanceKm: number;
@@ -23,6 +24,11 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // Esforço já salvo: o botão só reativa quando o esforço ou algum campo muda,
+  // senão um segundo toque gravaria o mesmo treino de novo.
+  const effortKey = `${distanceKm}|${durationSeconds}`;
+  const [savedEffort, setSavedEffort] = useState<string | null>(null);
+  const saved = savedEffort === effortKey;
   // Recalculado a cada render: um app aberto desde ontem não oferece "Hoje" errado.
   const days = recentDays();
   const [dayKey, setDayKey] = useState(days[0].key);
@@ -31,8 +37,17 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
     () => suggestedShoeId(workoutRepository.list(), shoeRepository.list()) ?? NO_SHOE,
   );
 
+  /** Envolve um setter: qualquer mudança libera um novo salvamento. */
+  function edited<T>(set: (value: T) => void) {
+    return (value: T) => {
+      set(value);
+      setSavedEffort(null);
+      setStatus('idle');
+    };
+  }
+
   function save() {
-    if (!terrain) return;
+    if (!terrain || saved) return;
     const result = workoutRepository.create({
       date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
@@ -44,6 +59,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
     });
     if (result.ok) {
       setStatus('saved');
+      setSavedEffort(effortKey);
       setRpe(undefined);
       setNote('');
     } else {
@@ -53,47 +69,42 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
 
   return (
     <View className="gap-4 rounded-xl border-2 border-black p-4 dark:border-white">
-      <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-        Registrar no diário
-      </Text>
+      <SectionHeader>Registrar no diário</SectionHeader>
 
       <ChoiceChips
         label="Dia"
         options={days.map((d) => ({ value: d.key, label: d.label }))}
         value={dayKey}
-        onChange={(value) => value && setDayKey(value)}
+        onChange={edited((value) => value && setDayKey(value))}
       />
-      <ShoePicker shoes={shoes} value={shoeId} onChange={setShoeId} />
+      <ShoePicker shoes={shoes} value={shoeId} onChange={edited(setShoeId)} />
       <ChoiceChips
         label="Terreno"
         options={TERRAIN_OPTIONS}
         value={terrain}
-        onChange={(value) => {
-          setTerrain(value);
-          setStatus('idle');
-        }}
+        onChange={edited(setTerrain)}
       />
-      <ChoiceChips label="Esforço percebido (RPE, opcional)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
+      <ChoiceChips label="Esforço percebido (RPE, opcional)" options={RPE_OPTIONS} value={rpe} onChange={edited(setRpe)} />
 
       <Field
         label="Nota (opcional)"
         variant="text"
         value={note}
-        onChangeText={setNote}
+        onChangeText={edited(setNote)}
         maxLength={NOTE_MAX_LENGTH}
         placeholder="Ex.: 8 × 400 m, vento contra"
         fill={false}
       />
 
       <Button
-        label={terrain ? 'Salvar treino' : 'Escolha o terreno'}
+        label={saved ? 'Salvo ✓' : terrain ? 'Salvar treino' : 'Escolha o terreno'}
         onPress={save}
-        disabled={!terrain}
+        disabled={!terrain || saved}
         size="lg"
         accessibilityHint={terrain ? undefined : 'Escolha o terreno para salvar'}
       />
 
-      {status !== 'idle' ? (
+      {status === 'error' || (status === 'saved' && saved) ? (
         <Text
           accessibilityLiveRegion="polite"
           className={`text-base font-semibold ${
