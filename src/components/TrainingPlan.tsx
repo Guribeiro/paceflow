@@ -85,7 +85,7 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
   const [goal] = useRaceGoal();
   const workouts = useWorkouts();
   const [showAll, setShowAll] = useState(false);
-  const plan = useMemo(() => (goal ? buildTrainingPlan(goal, workouts) : null), [goal, workouts]);
+  const plan = useMemo(() => (goal ? buildTrainingPlan(goal, workouts, new Date(), unit) : null), [goal, workouts, unit]);
   if (!plan || plan.weeks.length === 0) return null;
 
   const [current, ...next] = plan.weeks;

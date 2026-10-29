@@ -130,4 +130,11 @@ describe('planProgress', () => {
     });
     expect(planProgress(week, [workout(local(2026, 10, 27, 7), 6_000)]).longRunDone).toBe(false);
   });
+
+  it('escreve as distâncias das sessões na unidade escolhida', () => {
+    const km = buildTrainingPlan(half(10, 6300), history, now)!.weeks[0].sessions[0];
+    const mi = buildTrainingPlan(half(10, 6300), history, now, 'mi')!.weeks[0].sessions[0];
+    expect(km.detail).toMatch(/^\d+,\d km em ritmo leve$/);
+    expect(mi.detail).toMatch(/^\d+,\d mi em ritmo leve$/);
+  });
 });

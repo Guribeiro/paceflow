@@ -1,5 +1,6 @@
 import { RACE_DISTANCES } from './pace/predictor';
 import type { PaceRange } from './pace/training-paces';
+import { type DistanceUnit, distanceInUnit } from './pace/units';
 import { type RaceGoal, raceGoalSummary } from './race-goal';
 import type { Workout } from './workout';
 import { startOfWeek } from './workout-summary';
@@ -91,7 +92,15 @@ function thresholdSession(minutes: number, pace?: PaceRange): KeySession {
   return { kind: 'threshold', title: 'Limiar', detail: `${reps}×${block} min no ritmo de limiar`, ...(pace && { pace }) };
 }
 
-export function buildTrainingPlan(goal: RaceGoal, workouts: readonly Workout[], now: Date = new Date()): TrainingPlan | null {
+export function buildTrainingPlan(
+  goal: RaceGoal,
+  workouts: readonly Workout[],
+  now: Date = new Date(),
+  /** Unidade dos textos das sessões (o volume continua em metros). */
+  unit: DistanceUnit = 'km',
+): TrainingPlan | null {
+  const inUnit = (meters: number) => `${distanceInUnit(meters, unit).toFixed(1).replace('.', ',')} ${unit}`;
+
   const race = raceDate(goal);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (race < today) return null;
@@ -172,7 +181,7 @@ export function buildTrainingPlan(goal: RaceGoal, workouts: readonly Workout[], 
       sessions.push({
         kind: 'long',
         title: 'Longão',
-        detail: `${(longRun / 1000).toFixed(1).replace('.', ',')} km em ritmo leve`,
+        detail: `${inUnit(longRun)} em ritmo leve`,
         ...(paces && { pace: paces.easy }),
       });
       const progress = trainingWeeks > 1 ? Math.min(1, i / (trainingWeeks - 1)) : 1;
@@ -196,7 +205,7 @@ export function buildTrainingPlan(goal: RaceGoal, workouts: readonly Workout[], 
           sessions.push({
             kind: 'racePace',
             title: 'Ritmo de prova',
-            detail: `Longão com ${Math.max(3, blockKm)} km no ritmo da prova`,
+            detail: `Longão com ${unit === 'km' ? `${Math.max(3, blockKm)} km` : inUnit(Math.max(3, blockKm) * 1000)} no ritmo da prova`,
             ...(racePace && { pace: racePace }),
           });
         }
