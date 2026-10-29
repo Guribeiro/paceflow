@@ -1,4 +1,5 @@
 import { formatDuration } from './pace/time-format';
+import type { Shoe } from './shoe';
 import { TERRAIN_LABELS, type Workout } from './workout';
 
 export type ExportFormat = 'csv' | 'json';
@@ -8,7 +9,8 @@ export const EXPORT_MIME_TYPES: Record<ExportFormat, string> = {
   json: 'application/json',
 };
 
-const EXPORT_SCHEMA_VERSION = 1;
+// v2: tênis (shoes) e workouts[].shoeId. O import aceita v1 e v2.
+const EXPORT_SCHEMA_VERSION = 2;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const localDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -41,13 +43,15 @@ const CSV_HEADER = [
   'terreno',
   'rpe',
   'nota',
+  'tenis',
 ];
 
 /**
  * CSV no padrão do Excel em pt-BR: separador ";", vírgula decimal, CRLF e BOM
  * UTF-8 para os acentos aparecerem corretamente.
  */
-export function workoutsToCsv(workouts: readonly Workout[]): string {
+export function workoutsToCsv(workouts: readonly Workout[], shoes: readonly Shoe[] = []): string {
+  const shoeNames = new Map(shoes.map((s) => [s.id, s.name]));
   const lines = activeChronological(workouts).map((w) => {
     const date = new Date(w.date);
     const km = w.distanceMeters / 1000;
@@ -62,6 +66,7 @@ export function workoutsToCsv(workouts: readonly Workout[]): string {
       TERRAIN_LABELS[w.terrain],
       w.rpe !== undefined ? String(w.rpe) : '',
       csvField(w.note ?? ''),
+      csvField((w.shoeId && shoeNames.get(w.shoeId)) ?? ''),
     ].join(';');
   });
 
@@ -69,7 +74,11 @@ export function workoutsToCsv(workouts: readonly Workout[]): string {
 }
 
 /** JSON versionado em unidades canônicas, para backup ou análise por código. */
-export function workoutsToJson(workouts: readonly Workout[], exportedAt: Date = new Date()): string {
+export function workoutsToJson(
+  workouts: readonly Workout[],
+  exportedAt: Date = new Date(),
+  shoes: readonly Shoe[] = [],
+): string {
   const records = activeChronological(workouts).map(({ deletedAt: _deleted, ...rest }) => rest);
   return JSON.stringify(
     {
@@ -78,6 +87,7 @@ export function workoutsToJson(workouts: readonly Workout[], exportedAt: Date = 
       exportedAt: exportedAt.toISOString(),
       units: { distance: 'meters', duration: 'seconds' },
       workouts: records,
+      shoes: shoes.filter((s) => s.deletedAt === null).map(({ deletedAt: _deleted, ...rest }) => rest),
     },
     null,
     2,

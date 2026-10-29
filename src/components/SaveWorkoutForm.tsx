@@ -4,7 +4,11 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
+import { shoeRepository } from '../data/shoes';
+import { suggestedShoeId } from '../domain/shoe-mileage';
+import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
+import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
@@ -22,6 +26,10 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   // Recalculado a cada render: um app aberto desde ontem não oferece "Hoje" errado.
   const days = recentDays();
   const [dayKey, setDayKey] = useState(days[0].key);
+  const shoes = useShoes();
+  const [shoeId, setShoeId] = useState(
+    () => suggestedShoeId(workoutRepository.list(), shoeRepository.list()) ?? NO_SHOE,
+  );
 
   function save() {
     if (!terrain) return;
@@ -32,6 +40,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
       terrain,
       rpe,
       note,
+      shoeId: shoeId === NO_SHOE ? undefined : shoeId,
     });
     if (result.ok) {
       setStatus('saved');
@@ -54,6 +63,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
         value={dayKey}
         onChange={(value) => value && setDayKey(value)}
       />
+      <ShoePicker shoes={shoes} value={shoeId} onChange={setShoeId} />
       <ChoiceChips
         label="Terreno"
         options={TERRAIN_OPTIONS}

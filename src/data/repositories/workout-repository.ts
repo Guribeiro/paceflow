@@ -5,6 +5,7 @@ import {
   NOTE_MAX_LENGTH,
   type Workout,
   isIsoDate,
+  isSafeId,
   isTerrain,
   isValidRpe,
   parseWorkoutRecord,
@@ -15,12 +16,16 @@ import { type ImportOptions, type ImportSummary, createRecordStore } from './rec
 
 export type { ImportOptions, ImportSummary } from './record-store';
 
-export type NewWorkout = Pick<Workout, 'date' | 'distanceMeters' | 'durationSeconds' | 'terrain' | 'rpe' | 'note'>;
+export type NewWorkout = Pick<
+  Workout,
+  'date' | 'distanceMeters' | 'durationSeconds' | 'terrain' | 'rpe' | 'note' | 'shoeId'
+>;
 
-/** Campos omitidos ficam como estão; `null` limpa RPE ou nota. */
-export type WorkoutPatch = Partial<Omit<NewWorkout, 'rpe' | 'note'>> & {
+/** Campos omitidos ficam como estão; `null` limpa RPE, nota ou tênis. */
+export type WorkoutPatch = Partial<Omit<NewWorkout, 'rpe' | 'note' | 'shoeId'>> & {
   rpe?: number | null;
   note?: string | null;
+  shoeId?: string | null;
 };
 
 export type WorkoutError =
@@ -30,7 +35,8 @@ export type WorkoutError =
   | 'INVALID_DURATION'
   | 'INVALID_TERRAIN'
   | 'INVALID_RPE'
-  | 'INVALID_NOTE';
+  | 'INVALID_NOTE'
+  | 'INVALID_SHOE';
 
 export interface WorkoutRepository {
   /** Treinos ativos, do mais recente para o mais antigo. Referência estável até a próxima escrita. */
@@ -65,6 +71,7 @@ function validate(input: NewWorkout): WorkoutError | null {
   if (!isTerrain(input.terrain)) return 'INVALID_TERRAIN';
   if (input.rpe !== undefined && !isValidRpe(input.rpe)) return 'INVALID_RPE';
   if (input.note !== undefined && input.note.trim().length > NOTE_MAX_LENGTH) return 'INVALID_NOTE';
+  if (input.shoeId !== undefined && !isSafeId(input.shoeId)) return 'INVALID_SHOE';
   return null;
 }
 
@@ -81,6 +88,7 @@ function toRecord(
     terrain: input.terrain,
     ...(input.rpe !== undefined && { rpe: input.rpe }),
     ...(note && { note }),
+    ...(input.shoeId !== undefined && { shoeId: input.shoeId }),
     createdAt: meta.createdAt,
     updatedAt: meta.updatedAt,
     deletedAt: null,
@@ -126,6 +134,7 @@ export function createWorkoutRepository(
         terrain: patch.terrain ?? current.terrain,
         rpe: patch.rpe === null ? undefined : (patch.rpe ?? current.rpe),
         note: patch.note === null ? undefined : (patch.note ?? current.note),
+        shoeId: patch.shoeId === null ? undefined : (patch.shoeId ?? current.shoeId),
       };
       const error = validate(merged);
       if (error) return err(error);

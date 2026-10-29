@@ -280,6 +280,22 @@ describe('WorkoutRepository', () => {
     });
   });
 
+  describe('tênis do treino', () => {
+    it('grava, troca e remove o tênis', () => {
+      const { repo } = setup();
+      const workout = created(repo.create({ ...base, shoeId: 'shoe-1' }));
+      expect(workout.shoeId).toBe('shoe-1');
+      expect(repo.update('id-1', { shoeId: 'shoe-2' })).toMatchObject({ ok: true, value: { shoeId: 'shoe-2' } });
+      const cleared = repo.update('id-1', { shoeId: null });
+      expect(cleared.ok && cleared.value).not.toHaveProperty('shoeId');
+    });
+
+    it('rejeita id de tênis fora do formato seguro', () => {
+      const { repo } = setup();
+      expect(repo.create({ ...base, shoeId: 'a\\b' })).toEqual({ ok: false, error: 'INVALID_SHOE' });
+    });
+  });
+
   describe('validação', () => {
     it.each([
       [{ distanceMeters: 0 }, 'INVALID_DISTANCE'],

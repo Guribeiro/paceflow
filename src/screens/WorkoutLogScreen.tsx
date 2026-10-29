@@ -16,7 +16,10 @@ import {
 } from '../domain/pace';
 import { TERRAIN_LABELS, type Workout } from '../domain/workout';
 import { summarizeWeek } from '../domain/workout-summary';
+import { type Shoe, isActiveShoe } from '../domain/shoe';
+import { shoeMileage, shoeStatus } from '../domain/shoe-mileage';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
+import { useShoes } from '../hooks/useShoes';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 
@@ -45,7 +48,7 @@ function confirmRemove(workout: Workout, unit: DistanceUnit) {
   ]);
 }
 
-function WorkoutDetails({ workout, unit }: { workout: Workout; unit: DistanceUnit }) {
+function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
   const secondsPerKm = workout.durationSeconds / (workout.distanceMeters / 1000);
   const pace = unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm;
   const spokenUnit = unit === 'km' ? 'quilômetro' : 'milha';
@@ -61,6 +64,7 @@ function WorkoutDetails({ workout, unit }: { workout: Workout; unit: DistanceUni
         `pace de ${spokenDuration(pace)} por ${spokenUnit}`,
         TERRAIN_LABELS[workout.terrain],
         workout.rpe !== undefined && `esforço ${workout.rpe}`,
+        shoeName && `tênis ${shoeName}`,
         workout.note,
       ]
         .filter(Boolean)
@@ -83,12 +87,13 @@ function WorkoutDetails({ workout, unit }: { workout: Workout; unit: DistanceUni
           {distance} {unit} · {formatDuration(workout.durationSeconds)}
         </Text>
       </View>
+      {shoeName ? <Text className="text-base text-neutral-700 dark:text-neutral-300">Tênis: {shoeName}</Text> : null}
       {workout.note ? <Text className="text-base text-neutral-800 dark:text-neutral-200">{workout.note}</Text> : null}
     </View>
   );
 }
 
-function WorkoutItem({ workout, unit }: { workout: Workout; unit: DistanceUnit }) {
+function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
   const [editing, setEditing] = useState(false);
 
   return (
@@ -97,7 +102,7 @@ function WorkoutItem({ workout, unit }: { workout: Workout; unit: DistanceUnit }
         <EditWorkoutForm workout={workout} unit={unit} onDone={() => setEditing(false)} />
       ) : (
         <>
-          <WorkoutDetails workout={workout} unit={unit} />
+          <WorkoutDetails workout={workout} unit={unit} shoeName={shoeName} />
           <View className="flex-row flex-wrap justify-end gap-2">
             <Pressable
               onPress={() => setEditing(true)}
@@ -122,10 +127,32 @@ function WorkoutItem({ workout, unit }: { workout: Workout; unit: DistanceUnit }
   );
 }
 
+/** Aviso no topo do diário para tênis ativos perto do limite ou acima dele. */
+function ShoeAlerts({ shoes, workouts, unit }: { shoes: Shoe[]; workouts: Workout[]; unit: DistanceUnit }) {
+  const alerts = shoes
+    .filter(isActiveShoe)
+    .map((shoe) => ({ shoe, meters: shoeMileage(shoe, workouts) }))
+    .filter(({ shoe, meters }) => shoeStatus(meters, shoe.limitMeters) !== 'ok');
+  if (alerts.length === 0) return null;
+
+  return (
+    <View accessibilityRole="alert" className="gap-1 rounded-xl border-2 border-black p-3 dark:border-white">
+      {alerts.map(({ shoe, meters }) => (
+        <Text key={shoe.id} className="text-base font-semibold text-black dark:text-white">
+          {shoeStatus(meters, shoe.limitMeters) === 'replace' ? 'Hora de trocar' : 'Perto da troca'}: {shoe.name} (
+          {formatDistance(meters, unit)} de {formatDistance(shoe.limitMeters, unit)} {unit})
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export function WorkoutLogScreen() {
   const workouts = useWorkouts();
   const [unit] = usePreferredUnit();
   const [goalMeters] = useWeeklyGoal();
+  const shoes = useShoes();
+  const shoeNames = useMemo(() => new Map(shoes.map((s) => [s.id, s.name])), [shoes]);
   const summary = useMemo(() => summarizeWeek(workouts), [workouts]);
 
   return (
@@ -134,7 +161,9 @@ export function WorkoutLogScreen() {
         <FlatList
           data={workouts}
           keyExtractor={(w) => w.id}
-          renderItem={({ item }) => <WorkoutItem workout={item} unit={unit} />}
+          renderItem={({ item }) => (
+            <WorkoutItem workout={item} unit={unit} shoeName={item.shoeId ? shoeNames.get(item.shoeId) : undefined} />
+          )}
           contentContainerClassName="gap-3 p-4"
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
@@ -143,6 +172,7 @@ export function WorkoutLogScreen() {
                 Diário
               </Text>
               <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
+              <ShoeAlerts shoes={shoes} workouts={workouts} unit={unit} />
               <BackupSection canExport={workouts.length > 0} />
             </View>
           }

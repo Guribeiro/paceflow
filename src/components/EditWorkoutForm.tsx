@@ -12,7 +12,9 @@ import {
 } from '../domain/pace';
 import { NOTE_MAX_LENGTH, type Workout } from '../domain/workout';
 import { dateOnDay, dayKeyOf, recentDays } from '../domain/workout-date';
+import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
+import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
@@ -31,6 +33,8 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
   const [rpe, setRpe] = useState<number | undefined>(workout.rpe);
   const [note, setNote] = useState(workout.note ?? '');
   const [failed, setFailed] = useState(false);
+  const shoes = useShoes();
+  const [shoeId, setShoeId] = useState(workout.shoeId ?? NO_SHOE);
   const originalDayKey = dayKeyOf(workout.date);
   const [dayKey, setDayKey] = useState(originalDayKey);
 
@@ -57,6 +61,7 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
       terrain,
       rpe: rpe ?? null,
       note: note.trim() ? note : null,
+      shoeId: shoeId === NO_SHOE ? null : shoeId,
     });
     if (result.ok) onDone();
     else setFailed(true);
@@ -82,6 +87,7 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
       </View>
 
       <ChoiceChips label="Dia" options={dayOptions} value={dayKey} onChange={(v) => v && setDayKey(v)} />
+      <ShoePicker shoes={shoes} value={shoeId} onChange={setShoeId} keepId={workout.shoeId} />
       <ChoiceChips label="Terreno" options={TERRAIN_OPTIONS} value={terrain} onChange={(v) => v && setTerrain(v)} />
       <ChoiceChips label="Esforço percebido (RPE)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
 

@@ -18,7 +18,11 @@ import {
 import { NOTE_MAX_LENGTH } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
 import { useLargeText } from '../hooks/useLargeText';
+import { shoeRepository } from '../data/shoes';
+import { suggestedShoeId } from '../domain/shoe-mileage';
+import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
+import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
 import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS } from './workout-options';
@@ -98,6 +102,10 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const shoes = useShoes();
+  const [shoeId, setShoeId] = useState(
+    () => suggestedShoeId(workoutRepository.list(), shoeRepository.list()) ?? NO_SHOE,
+  );
 
   const other = parseDistance(otherText);
   const repMeters =
@@ -122,6 +130,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
       terrain: 'pista',
       rpe,
       note: note.trim() || autoNote,
+      shoeId: shoeId === NO_SHOE ? undefined : shoeId,
     });
     if (result.ok) {
       setStatus('saved');
@@ -243,6 +252,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
             onChange={(v) => v && setDayKey(v)}
           />
           <ChoiceChips label="Esforço percebido (RPE, opcional)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
+          <ShoePicker shoes={shoes} value={shoeId} onChange={setShoeId} />
           <View className="gap-1">
             <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Nota</Text>
             <TextInput

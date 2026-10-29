@@ -1,12 +1,13 @@
 import { type ImportError, parseWorkoutsBackup } from '../../domain/import';
 import type { ImportSummary } from '../repositories/workout-repository';
+import { shoeRepository } from '../shoes';
 import { workoutRepository } from '../workouts';
 import { pickTextFile } from './pick-text-file';
 
 export type ImportOutcome =
   | { status: 'canceled' }
   | { status: 'error'; error: ImportError }
-  | { status: 'done'; summary: ImportSummary; invalid: number };
+  | { status: 'done'; summary: ImportSummary; shoesAdded: number; invalid: number };
 
 /** Escolhe um backup JSON, valida e mescla no diário. */
 export async function importWorkoutsFromFile(): Promise<ImportOutcome> {
@@ -17,6 +18,8 @@ export async function importWorkoutsFromFile(): Promise<ImportOutcome> {
   const parsed = parseWorkoutsBackup(text);
   if (!parsed.ok) return { status: 'error', error: parsed.error };
 
+  // Tênis antes dos treinos, para que os shoeId importados já tenham dono.
+  const shoes = shoeRepository.importShoes(parsed.value.shoes);
   const summary = workoutRepository.importWorkouts(parsed.value.workouts);
-  return { status: 'done', summary, invalid: parsed.value.invalid };
+  return { status: 'done', summary, shoesAdded: shoes.added, invalid: parsed.value.invalid };
 }

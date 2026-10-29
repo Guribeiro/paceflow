@@ -26,10 +26,11 @@ function describeImport(outcome: Exclude<ImportOutcome, { status: 'canceled' }>)
     };
   }
 
-  const { summary, invalid } = outcome;
+  const { summary, shoesAdded, invalid } = outcome;
   const parts = [
     summary.added > 0 && plural(summary.added, 'treino adicionado', 'treinos adicionados'),
     summary.updated > 0 && plural(summary.updated, 'treino atualizado', 'treinos atualizados'),
+    shoesAdded > 0 && plural(shoesAdded, 'tênis adicionado', 'tênis adicionados'),
   ].filter((p): p is string => Boolean(p));
 
   let text = parts.length > 0 ? `${parts.join(', ')}.` : 'Nenhum treino novo: o diário já estava atualizado.';

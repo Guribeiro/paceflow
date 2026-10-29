@@ -95,4 +95,22 @@ describe('WorkoutLogScreen — importação', () => {
     await pressImport();
     expect(await screen.findByText('Não foi possível importar. Tente de novo.')).toBeOnTheScreen();
   });
+
+  it('backup versão 2 restaura os tênis junto', async () => {
+    const shoe = {
+      id: 'shoe-1',
+      name: 'Pegasus',
+      initialMeters: 0,
+      limitMeters: 700000,
+      retiredAt: null,
+      createdAt: '2026-10-01T10:00:00.000Z',
+      updatedAt: '2026-10-01T10:00:00.000Z',
+      deletedAt: null,
+    };
+    mockPickTextFile.mockResolvedValue(workoutsToJson([backupWorkout('c3', { shoeId: 'shoe-1' })], new Date(), [shoe]));
+    await pressImport();
+    expect(await screen.findByText('1 treino adicionado, 1 tênis adicionado.')).toBeOnTheScreen();
+    expect(screen.getByText('Tênis: Pegasus')).toBeOnTheScreen();
+  });
 });
+

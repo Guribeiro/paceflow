@@ -21,6 +21,8 @@ export interface Workout {
   /** Percepção de esforço, 1–10. */
   rpe?: number;
   note?: string;
+  /** Tênis usado (id de Shoe). */
+  shoeId?: string;
   createdAt: string;
   updatedAt: string;
   /** Soft delete: preserva o registro para uma futura sincronização. */
@@ -42,13 +44,14 @@ const isPositiveNumber = (value: unknown): value is number =>
 // O id vira parte da chave no armazenamento; o MMKV na web rejeita "\".
 const SAFE_ID = /^[A-Za-z0-9-]{1,64}$/;
 
+export const isSafeId = (value: unknown): value is string => typeof value === 'string' && SAFE_ID.test(value);
+
 /** Valida um treino vindo do armazenamento ou de um backup; null se inválido. */
 export function parseWorkoutRecord(value: unknown): Workout | null {
   if (typeof value !== 'object' || value === null) return null;
   const w = value as Record<string, unknown>;
   const valid =
-    typeof w.id === 'string' &&
-    SAFE_ID.test(w.id) &&
+    isSafeId(w.id) &&
     isIsoDate(w.date) &&
     isIsoDate(w.createdAt) &&
     isIsoDate(w.updatedAt) &&
@@ -57,6 +60,7 @@ export function parseWorkoutRecord(value: unknown): Workout | null {
     isPositiveNumber(w.durationSeconds) &&
     isTerrain(w.terrain) &&
     (w.rpe === undefined || isValidRpe(w.rpe)) &&
-    (w.note === undefined || (typeof w.note === 'string' && w.note.length <= NOTE_MAX_LENGTH));
+    (w.note === undefined || (typeof w.note === 'string' && w.note.length <= NOTE_MAX_LENGTH)) &&
+    (w.shoeId === undefined || isSafeId(w.shoeId));
   return valid ? (w as unknown as Workout) : null;
 }

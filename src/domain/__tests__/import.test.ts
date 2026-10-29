@@ -23,7 +23,7 @@ describe('parseWorkoutsBackup', () => {
   it('lê de volta o que a exportação gera', () => {
     const original = [workout(), workout({ id: 'a1', date: '2026-10-30T10:00:00.000Z', rpe: undefined, note: undefined })];
     const result = parseWorkoutsBackup(workoutsToJson(original, new Date()));
-    expect(result).toEqual({ ok: true, value: { workouts: original, invalid: 0 } });
+    expect(result).toEqual({ ok: true, value: { workouts: original, shoes: [], invalid: 0 } });
   });
 
   it('ignora e conta registros inválidos', () => {
@@ -35,12 +35,12 @@ describe('parseWorkoutsBackup', () => {
         'lixo',
       ]),
     );
-    expect(result).toEqual({ ok: true, value: { workouts: [workout()], invalid: 3 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], invalid: 3 } });
   });
 
   it('rejeita ids que não são seguros para usar como chave', () => {
     const result = parseWorkoutsBackup(backup([workout({ id: 'a\\b' }), workout({ id: '' }), workout({ id: 'x'.repeat(65) })]));
-    expect(result).toEqual({ ok: true, value: { workouts: [], invalid: 3 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [], shoes: [], invalid: 3 } });
   });
 
   it('ignora deletedAt vindo do arquivo: importar nunca remove', () => {
@@ -60,9 +60,37 @@ describe('parseWorkoutsBackup', () => {
   it.each([
     ['app diferente', backup([], { app: 'Strava' })],
     ['sem app', JSON.stringify({ schemaVersion: 1, workouts: [] })],
-    ['versão futura', backup([], { schemaVersion: 2 })],
+    ['versão futura', backup([], { schemaVersion: 3 })],
     ['workouts não é lista', backup([], { workouts: {} })],
   ])('UNSUPPORTED_FORMAT: %s', (_label, input) => {
     expect(parseWorkoutsBackup(input)).toEqual({ ok: false, error: 'UNSUPPORTED_FORMAT' });
   });
 });
+
+describe('parseWorkoutsBackup com tênis (versão 2)', () => {
+  const shoe = {
+    id: 'shoe-1',
+    name: 'Pegasus 41',
+    initialMeters: 50_000,
+    limitMeters: 700_000,
+    retiredAt: null,
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+  };
+
+  it('lê tênis e shoeId; tênis inválidos contam como inválidos', () => {
+    const result = parseWorkoutsBackup(
+      backup([workout({ shoeId: 'shoe-1' })], { schemaVersion: 2, shoes: [shoe, { ...shoe, id: 'bad', name: '' }] }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: { workouts: [workout({ shoeId: 'shoe-1' })], shoes: [{ ...shoe, deletedAt: null }], invalid: 1 },
+    });
+  });
+
+  it('backup versão 1 continua aceito, sem tênis', () => {
+    const result = parseWorkoutsBackup(backup([workout()]));
+    expect(result.ok && result.value.shoes).toEqual([]);
+  });
+});
+

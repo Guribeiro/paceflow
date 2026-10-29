@@ -27,7 +27,7 @@ describe('workoutsToCsv', () => {
     const csv = workoutsToCsv([]);
     expect(csv.startsWith(BOM)).toBe(true);
     expect(rows(csv)[0]).toBe(
-      'data;hora;distancia_km;tempo;tempo_segundos;pace_min_km;velocidade_kmh;terreno;rpe;nota',
+      'data;hora;distancia_km;tempo;tempo_segundos;pace_min_km;velocidade_kmh;terreno;rpe;nota;tenis',
     );
   });
 
@@ -41,12 +41,12 @@ describe('workoutsToCsv', () => {
         note: 'Tiros',
       }),
     ]);
-    expect(rows(csv)[1]).toBe('2026-10-29;07:05;10,00;52:05;3125;5:13;11,52;Pista;8;Tiros');
+    expect(rows(csv)[1]).toBe('2026-10-29;07:05;10,00;52:05;3125;5:13;11,52;Pista;8;Tiros;');
   });
 
   it('deixa RPE e nota vazios quando ausentes', () => {
     const csv = workoutsToCsv([workout(local(2026, 10, 29, 7))]);
-    expect(rows(csv)[1]).toBe('2026-10-29;07:00;5,00;25:00;1500;5:00;12,00;Rua;;');
+    expect(rows(csv)[1]).toBe('2026-10-29;07:00;5,00;25:00;1500;5:00;12,00;Rua;;;');
   });
 
   it('ordena do mais antigo para o mais recente e ignora removidos', () => {
@@ -60,12 +60,12 @@ describe('workoutsToCsv', () => {
 
   it('escapa ;, aspas e quebras de linha na nota', () => {
     const csv = workoutsToCsv([workout(local(2026, 10, 29), { note: 'Vento; "forte"\nsubida' })]);
-    expect(csv.replace(BOM, '')).toContain(';"Vento; ""forte""\nsubida"');
+    expect(csv.replace(BOM, '')).toContain(';"Vento; ""forte""\nsubida";');
   });
 
   it.each(['=1+1', '+5', '-SOMA(A1)', '@cmd'])('neutraliza fórmula na nota "%s"', (note) => {
     const csv = workoutsToCsv([workout(local(2026, 10, 29), { note })]);
-    expect(rows(csv)[1].endsWith(`;'${note}`)).toBe(true);
+    expect(rows(csv)[1].endsWith(`;'${note};`)).toBe(true);
   });
 });
 
@@ -79,7 +79,7 @@ describe('workoutsToJson', () => {
 
     expect(parsed).toEqual({
       app: 'PaceFlow',
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: '2026-10-29T12:00:00.000Z',
       units: { distance: 'meters', duration: 'seconds' },
       workouts: [
@@ -94,6 +94,7 @@ describe('workoutsToJson', () => {
           updatedAt: active.updatedAt,
         },
       ],
+      shoes: [],
     });
   });
 
@@ -110,3 +111,43 @@ describe('exportFileName', () => {
     expect(exportFileName('json', local(2026, 1, 5))).toBe('paceflow-treinos-2026-01-05.json');
   });
 });
+
+describe('backup com tênis', () => {
+  const shoe = {
+    id: 'shoe-1',
+    name: 'Pegasus; 41',
+    initialMeters: 0,
+    limitMeters: 700_000,
+    retiredAt: null,
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-10-01T00:00:00.000Z',
+    deletedAt: null,
+  };
+
+  it('CSV mostra o nome do tênis (escapado)', () => {
+    const csv = workoutsToCsv([workout(local(2026, 10, 29), { shoeId: 'shoe-1' })], [shoe]);
+    expect(rows(csv)[1].endsWith(';"Pegasus; 41"')).toBe(true);
+  });
+
+  it('JSON leva os tênis ativos e o shoeId dos treinos', () => {
+    const parsed = JSON.parse(
+      workoutsToJson([workout(local(2026, 10, 29), { shoeId: 'shoe-1' })], new Date(), [
+        shoe,
+        { ...shoe, id: 'gone', deletedAt: '2026-10-02T00:00:00.000Z' },
+      ]),
+    );
+    expect(parsed.workouts[0].shoeId).toBe('shoe-1');
+    expect(parsed.shoes).toEqual([
+      {
+        id: 'shoe-1',
+        name: 'Pegasus; 41',
+        initialMeters: 0,
+        limitMeters: 700_000,
+        retiredAt: null,
+        createdAt: shoe.createdAt,
+        updatedAt: shoe.updatedAt,
+      },
+    ]);
+  });
+});
+

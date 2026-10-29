@@ -1,15 +1,17 @@
 import { type Result, err, ok } from './pace/result';
+import { type Shoe, parseShoeRecord } from './shoe';
 import { type Workout, parseWorkoutRecord } from './workout';
 
 export type ImportError = 'INVALID_JSON' | 'UNSUPPORTED_FORMAT';
 
 export interface ParsedBackup {
   workouts: Workout[];
+  shoes: Shoe[];
   /** Registros descartados por estarem malformados. */
   invalid: number;
 }
 
-const SUPPORTED_SCHEMA_VERSION = 1;
+const SUPPORTED_SCHEMA_VERSION = 2;
 
 /** Lê um backup gerado por workoutsToJson. Registros inválidos são descartados e contados. */
 export function parseWorkoutsBackup(json: string): Result<ParsedBackup, ImportError> {
@@ -40,5 +42,13 @@ export function parseWorkoutsBackup(json: string): Result<ParsedBackup, ImportEr
     if (workout) workouts.push(workout);
     else invalid++;
   }
-  return ok({ workouts, invalid });
+  const shoes: Shoe[] = [];
+  // v1 não tem tênis; em v2 a lista é opcional.
+  for (const item of Array.isArray(backup.shoes) ? backup.shoes : []) {
+    const shoe = typeof item === 'object' && item !== null ? parseShoeRecord({ ...item, deletedAt: null }) : null;
+    if (shoe) shoes.push(shoe);
+    else invalid++;
+  }
+
+  return ok({ workouts, shoes, invalid });
 }

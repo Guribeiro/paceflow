@@ -1,0 +1,180 @@
+import { useState } from 'react';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
+
+import { shoeRepository } from '../data/shoes';
+import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKilometers } from '../domain/pace';
+import { DEFAULT_SHOE_LIMIT_METERS, type Shoe } from '../domain/shoe';
+import { type ShoeStatus, shoeMileage, shoeStatus } from '../domain/shoe-mileage';
+import { useShoes } from '../hooks/useShoes';
+import { useWorkouts } from '../hooks/useWorkouts';
+import { Field } from './Field';
+
+const STATUS_LABEL: Record<ShoeStatus, string> = {
+  ok: '',
+  attention: 'Perto da troca',
+  replace: 'Hora de trocar',
+};
+
+function confirmRemove(shoe: Shoe) {
+  const message = 'Os treinos continuam no diário, só sem o tênis.';
+  if (Platform.OS === 'web') {
+    if (window.confirm(`Excluir ${shoe.name}?\n${message}`)) shoeRepository.remove(shoe.id);
+    return;
+  }
+  Alert.alert(`Excluir ${shoe.name}?`, message, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Excluir', style: 'destructive', onPress: () => shoeRepository.remove(shoe.id) },
+  ]);
+}
+
+function LinkButton({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" className="min-h-12 justify-center px-2">
+      <Text
+        className={`text-base font-semibold underline ${danger ? 'text-red-700 dark:text-red-400' : 'text-black dark:text-white'}`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: DistanceUnit }) {
+  const status = shoeStatus(meters, shoe.limitMeters);
+  const ratio = Math.min(1, meters / shoe.limitMeters);
+  const retired = shoe.retiredAt !== null;
+  const summary = `${formatDistance(meters, unit)} de ${formatDistance(shoe.limitMeters, unit)} ${unit}`;
+
+  return (
+    <View className="gap-2 rounded-xl border-2 border-black p-3 dark:border-white">
+      <View
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={`${shoe.name}${retired ? ', aposentado' : ''}: ${summary}${STATUS_LABEL[status] ? `, ${STATUS_LABEL[status]}` : ''}`}
+        accessibilityValue={{ min: 0, max: 100, now: Math.round(ratio * 100) }}
+        className="gap-1"
+      >
+        <View className="flex-row flex-wrap items-center justify-between gap-x-3">
+          <Text className="text-lg font-bold text-black dark:text-white">
+            {shoe.name}
+            {retired ? ' (aposentado)' : ''}
+          </Text>
+          {STATUS_LABEL[status] && !retired ? (
+            <Text
+              className={`text-base font-bold ${status === 'replace' ? 'text-red-700 dark:text-red-400' : 'text-black dark:text-white'}`}
+            >
+              {STATUS_LABEL[status]}
+            </Text>
+          ) : null}
+        </View>
+        <View className="h-3 overflow-hidden rounded-full bg-neutral-300 dark:bg-neutral-700">
+          <View style={{ width: `${ratio * 100}%` }} className="h-full rounded-full bg-black dark:bg-white" />
+        </View>
+        <Text className="text-base text-neutral-700 dark:text-neutral-300">{summary}</Text>
+      </View>
+      <View className="flex-row flex-wrap justify-end gap-2">
+        <LinkButton
+          label={retired ? 'Reativar' : 'Aposentar'}
+          onPress={() => shoeRepository.update(shoe.id, { retired: !retired })}
+        />
+        <LinkButton label="Excluir" danger onPress={() => confirmRemove(shoe)} />
+      </View>
+    </View>
+  );
+}
+
+function AddShoeForm({ unit, onDone }: { unit: DistanceUnit; onDone: () => void }) {
+  const [name, setName] = useState('');
+  const [initialText, setInitialText] = useState('');
+  const [limitText, setLimitText] = useState('');
+  const initial = initialText ? parseDistance(initialText) : null;
+  const limit = limitText ? parseDistance(limitText) : null;
+  const initialOk = !initial || initial.ok;
+  const limitOk = !limit || (limit.ok && limit.value > 0);
+  const canSave = name.trim().length > 0 && initialOk && limitOk;
+  const toMeters = (value: number) => toKilometers(value, unit) * 1000;
+
+  function save() {
+    const result = shoeRepository.create({
+      name,
+      initialMeters: initial?.ok ? toMeters(initial.value) : 0,
+      limitMeters: limit?.ok ? toMeters(limit.value) : DEFAULT_SHOE_LIMIT_METERS,
+    });
+    if (result.ok) onDone();
+  }
+
+  return (
+    <View className="gap-3 rounded-xl border-2 border-black p-3 dark:border-white">
+      <Field label="Nome do tênis" value={name} onChangeText={setName} placeholder="Ex.: Pegasus 41" fill={false} />
+      <Field
+        label={`Já rodados (${unit}, opcional)`}
+        value={initialText}
+        onChangeText={setInitialText}
+        placeholder="0"
+        keyboardType="decimal-pad"
+        error={initialOk ? undefined : 'Use um número'}
+        fill={false}
+      />
+      <Field
+        label={`Trocar com (${unit})`}
+        value={limitText}
+        onChangeText={setLimitText}
+        placeholder={distanceInUnit(DEFAULT_SHOE_LIMIT_METERS, unit).toFixed(0)}
+        keyboardType="decimal-pad"
+        error={limitOk ? undefined : 'Use um número maior que zero'}
+        fill={false}
+      />
+      <View className="flex-row flex-wrap gap-3">
+        <Pressable
+          onPress={onDone}
+          accessibilityRole="button"
+          className="min-h-12 flex-1 items-center justify-center rounded-xl border-2 border-black px-4 dark:border-white"
+        >
+          <Text className="text-lg font-bold text-black dark:text-white">Cancelar</Text>
+        </Pressable>
+        <Pressable
+          onPress={save}
+          disabled={!canSave}
+          accessibilityRole="button"
+          accessibilityLabel="Salvar tênis"
+          accessibilityState={{ disabled: !canSave }}
+          className={`min-h-12 flex-1 items-center justify-center rounded-xl px-4 ${canSave ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'}`}
+        >
+          <Text className={`text-lg font-bold ${canSave ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'}`}>
+            Salvar
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/** Seção "Tênis" em Ajustes: quilometragem por par e aviso de troca. */
+export function ShoesSection({ unit }: { unit: DistanceUnit }) {
+  const shoes = useShoes();
+  const workouts = useWorkouts();
+  const [adding, setAdding] = useState(false);
+  // Ativos primeiro, aposentados no fim.
+  const ordered = [...shoes].sort((a, b) => Number(a.retiredAt !== null) - Number(b.retiredAt !== null));
+
+  return (
+    <View className="gap-2">
+      <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Tênis</Text>
+      {shoes.length === 0 && !adding ? (
+        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+          Cadastre seus tênis para acompanhar quantos km cada par já rodou.
+        </Text>
+      ) : null}
+      {ordered.map((shoe) => (
+        <ShoeRow key={shoe.id} shoe={shoe} meters={shoeMileage(shoe, workouts)} unit={unit} />
+      ))}
+      {adding ? (
+        <AddShoeForm unit={unit} onDone={() => setAdding(false)} />
+      ) : (
+        <Pressable onPress={() => setAdding(true)} accessibilityRole="button" className="min-h-12 justify-center self-start">
+          <Text className="text-base font-semibold text-black underline dark:text-white">Adicionar tênis</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
