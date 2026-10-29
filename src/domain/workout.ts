@@ -32,3 +32,31 @@ export const isTerrain = (value: unknown): value is Terrain =>
 
 export const isValidRpe = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= RPE_MIN && value <= RPE_MAX;
+
+export const isIsoDate = (value: unknown): value is string =>
+  typeof value === 'string' && !Number.isNaN(Date.parse(value));
+
+const isPositiveNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+// O id vira parte da chave no armazenamento; o MMKV na web rejeita "\".
+const SAFE_ID = /^[A-Za-z0-9-]{1,64}$/;
+
+/** Valida um treino vindo do armazenamento ou de um backup; null se inválido. */
+export function parseWorkoutRecord(value: unknown): Workout | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const w = value as Record<string, unknown>;
+  const valid =
+    typeof w.id === 'string' &&
+    SAFE_ID.test(w.id) &&
+    isIsoDate(w.date) &&
+    isIsoDate(w.createdAt) &&
+    isIsoDate(w.updatedAt) &&
+    (w.deletedAt === null || isIsoDate(w.deletedAt)) &&
+    isPositiveNumber(w.distanceMeters) &&
+    isPositiveNumber(w.durationSeconds) &&
+    isTerrain(w.terrain) &&
+    (w.rpe === undefined || isValidRpe(w.rpe)) &&
+    (w.note === undefined || (typeof w.note === 'string' && w.note.length <= NOTE_MAX_LENGTH));
+  return valid ? (w as unknown as Workout) : null;
+}

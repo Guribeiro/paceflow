@@ -1,7 +1,14 @@
 import { randomUUID } from 'expo-crypto';
 
 import { type Result, err, isPositiveFinite, ok } from '../../domain/pace/result';
-import { NOTE_MAX_LENGTH, type Workout, isTerrain, isValidRpe } from '../../domain/workout';
+import {
+  NOTE_MAX_LENGTH,
+  type Workout,
+  isIsoDate,
+  isTerrain,
+  isValidRpe,
+  parseWorkoutRecord,
+} from '../../domain/workout';
 import type { KeyValueStorage } from '../storage/key-value';
 
 // Cada treino fica numa chave própria e um índice guarda os ids, para que salvar
@@ -37,15 +44,24 @@ export interface WorkoutRepository {
   create(input: NewWorkout): Result<Workout, WorkoutError>;
   update(id: string, patch: WorkoutPatch): Result<Workout, WorkoutError>;
   remove(id: string): boolean;
+  /**
+   * Mescla treinos de um backup: adiciona os novos e, para o mesmo id, fica a
+   * versão com updatedAt mais recente (inclusive contra remoções locais).
+   */
+  importWorkouts(workouts: readonly Workout[]): ImportSummary;
   subscribe(listener: () => void): () => void;
+}
+
+export interface ImportSummary {
+  added: number;
+  updated: number;
+  unchanged: number;
 }
 
 export interface RepositoryDeps {
   generateId?: () => string;
   now?: () => string;
 }
-
-const isIsoDate = (value: unknown): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
 function validate(input: NewWorkout): WorkoutError | null {
   if (!isIsoDate(input.date)) return 'INVALID_DATE';
@@ -78,28 +94,11 @@ function toRecord(
 
 function parseWorkout(raw: string | undefined): Workout | null {
   if (raw === undefined) return null;
-  let value: unknown;
   try {
-    value = JSON.parse(raw);
+    return parseWorkoutRecord(JSON.parse(raw));
   } catch {
     return null;
   }
-  if (typeof value !== 'object' || value === null) return null;
-  const w = value as Record<string, unknown>;
-  const valid =
-    typeof w.id === 'string' &&
-    isIsoDate(w.date) &&
-    isIsoDate(w.createdAt) &&
-    isIsoDate(w.updatedAt) &&
-    (w.deletedAt === null || isIsoDate(w.deletedAt)) &&
-    typeof w.distanceMeters === 'number' &&
-    isPositiveFinite(w.distanceMeters) &&
-    typeof w.durationSeconds === 'number' &&
-    isPositiveFinite(w.durationSeconds) &&
-    isTerrain(w.terrain) &&
-    (w.rpe === undefined || isValidRpe(w.rpe)) &&
-    (w.note === undefined || typeof w.note === 'string');
-  return valid ? (w as unknown as Workout) : null;
 }
 
 export function createWorkoutRepository(
@@ -190,6 +189,33 @@ export function createWorkoutRepository(
       storage.set(recordKey(id), JSON.stringify({ ...workout, deletedAt: timestamp, updatedAt: timestamp }));
       changed();
       return true;
+    },
+
+    importWorkouts(workouts) {
+      const summary: ImportSummary = { added: 0, updated: 0, unchanged: 0 };
+      const index = readIndex();
+      const known = new Set(index);
+
+      for (const incoming of workouts) {
+        const current = parseWorkout(storage.getString(recordKey(incoming.id)));
+        if (current && Date.parse(current.updatedAt) >= Date.parse(incoming.updatedAt)) {
+          summary.unchanged++;
+          continue;
+        }
+        storage.set(recordKey(incoming.id), JSON.stringify(incoming));
+        if (!known.has(incoming.id)) {
+          index.push(incoming.id);
+          known.add(incoming.id);
+        }
+        if (current) summary.updated++;
+        else summary.added++;
+      }
+
+      if (summary.added + summary.updated > 0) {
+        storage.set(INDEX_KEY, JSON.stringify(index));
+        changed();
+      }
+      return summary;
     },
 
     subscribe(listener) {

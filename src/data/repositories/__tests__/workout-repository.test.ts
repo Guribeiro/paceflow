@@ -1,4 +1,5 @@
 import { InMemoryStorage } from '../../storage/key-value';
+import type { Workout } from '../../../domain/workout';
 import { type NewWorkout, createWorkoutRepository } from '../workout-repository';
 
 const base: NewWorkout = {
@@ -145,6 +146,67 @@ describe('WorkoutRepository', () => {
       repo.update('id-1', { date: '2026-10-30T07:00:00.000Z' });
       expect(listener).toHaveBeenCalledTimes(1);
       expect(repo.list().map((w) => w.id)).toEqual(['id-1', 'id-2']);
+    });
+  });
+
+  describe('importWorkouts', () => {
+    const imported = (overrides: Partial<Workout> = {}): Workout => ({
+      ...base,
+      id: 'imp-1',
+      createdAt: '2026-10-20T10:00:00.000Z',
+      updatedAt: '2026-10-20T10:00:00.000Z',
+      deletedAt: null,
+      ...overrides,
+    });
+
+    it('adiciona treinos novos preservando id e timestamps', () => {
+      const { repo } = setup();
+      expect(repo.importWorkouts([imported()])).toEqual({ added: 1, updated: 0, unchanged: 0 });
+      expect(repo.getById('imp-1')).toEqual(imported());
+    });
+
+    it('substitui quando o importado é mais recente', () => {
+      const { repo } = setup();
+      repo.importWorkouts([imported({ terrain: 'rua' })]);
+      const summary = repo.importWorkouts([imported({ terrain: 'pista', updatedAt: '2026-10-21T10:00:00.000Z' })]);
+      expect(summary).toEqual({ added: 0, updated: 1, unchanged: 0 });
+      expect(repo.getById('imp-1')).toMatchObject({ terrain: 'pista' });
+    });
+
+    it('mantém o local quando ele é igual ou mais recente', () => {
+      const { repo } = setup();
+      repo.importWorkouts([imported({ terrain: 'pista', updatedAt: '2026-10-21T10:00:00.000Z' })]);
+      const summary = repo.importWorkouts([imported({ terrain: 'rua' }), imported({ terrain: 'esteira', updatedAt: '2026-10-21T10:00:00.000Z' })]);
+      expect(summary).toEqual({ added: 0, updated: 0, unchanged: 2 });
+      expect(repo.getById('imp-1')).toMatchObject({ terrain: 'pista' });
+    });
+
+    it('não ressuscita treino removido depois do backup', () => {
+      const { repo } = setup();
+      created(repo.create(base)); // id-1, updatedAt 10:00
+      repo.remove('id-1');
+      const summary = repo.importWorkouts([
+        { ...base, id: 'id-1', createdAt: '2026-10-29T09:00:00.000Z', updatedAt: '2026-10-29T09:30:00.000Z', deletedAt: null },
+      ]);
+      expect(summary).toEqual({ added: 0, updated: 0, unchanged: 1 });
+      expect(repo.getById('id-1')).toBeUndefined();
+    });
+
+    it('notifica uma única vez e só se algo mudou', () => {
+      const { repo } = setup();
+      const listener = jest.fn();
+      repo.subscribe(listener);
+      repo.importWorkouts([imported(), imported({ id: 'imp-2' })]);
+      expect(listener).toHaveBeenCalledTimes(1);
+      repo.importWorkouts([imported()]);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('não duplica o id no índice', () => {
+      const { storage, repo } = setup();
+      repo.importWorkouts([imported()]);
+      repo.importWorkouts([imported({ updatedAt: '2026-10-22T10:00:00.000Z' })]);
+      expect(JSON.parse(storage.getString('workouts:v1:index')!)).toEqual(['imp-1']);
     });
   });
 

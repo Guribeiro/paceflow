@@ -28,6 +28,7 @@ describe('WorkoutLogScreen', () => {
     expect(screen.getByText(/Nenhum treino ainda/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Esta semana: 0,0 quilômetros, 0 treinos/)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Importar backup JSON' })).toBeOnTheScreen();
   });
 
   it('lista o treino e soma no resumo da semana', async () => {
