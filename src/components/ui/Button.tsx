@@ -44,8 +44,16 @@ const LABEL: Record<ButtonVariant, string> = {
   primary: 'font-bold text-white dark:text-black',
   secondary: 'font-bold text-black dark:text-white',
   danger: 'font-bold text-red-700 dark:text-red-400',
-  link: 'font-semibold text-black underline dark:text-white',
-  'danger-link': 'font-semibold text-red-700 underline dark:text-red-400',
+  link: 'text-base font-semibold text-black dark:text-white',
+  'danger-link': 'text-base font-semibold text-red-700 dark:text-red-400',
+};
+
+// Sublinhado desenhado como borda: no Android (A50, RN 0.88 + NativeWind 4.2) o
+// textDecorationLine sumia de forma intermitente após rebuilds; a borda é estável e,
+// com 2 px, mais visível sob sol.
+const UNDERLINE: Record<'link' | 'danger-link', string> = {
+  link: 'border-b-2 border-black dark:border-white',
+  'danger-link': 'border-b-2 border-red-700 dark:border-red-400',
 };
 
 /** Botão do app: variantes, tamanhos, desativado e feedback de toque padronizados. */
@@ -68,6 +76,14 @@ export function Button({
   const box = off && !isLink ? `rounded-xl px-4 ${DISABLED_BOX}` : BOX[variant];
   const text = off ? DISABLED_TEXT : LABEL[variant];
 
+  const labelText = isLink ? (
+    <View className={off ? 'border-b-2 border-neutral-700 dark:border-neutral-300' : UNDERLINE[variant]}>
+      <Text className={off ? `text-base font-semibold ${DISABLED_TEXT}` : text}>{label}</Text>
+    </View>
+  ) : (
+    <Text className={`${TEXT_SIZE[size]} ${text}`}>{label}</Text>
+  );
+
   return (
     <Pressable
       {...props}
@@ -77,11 +93,15 @@ export function Button({
       accessibilityState={{ disabled: off, busy, expanded }}
       className={`${HEIGHT[size]} items-center justify-center ${grow && !stacked ? 'flex-1' : ''} ${box}`}
     >
-      <View className="flex-row items-center gap-2">
-        {/* Mesma cor do texto desativado (neutral-700 / neutral-300). */}
-        {busy ? <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#d4d4d4' : '#404040'} /> : null}
-        <Text className={`${isLink ? 'text-base' : TEXT_SIZE[size]} ${text}`}>{label}</Text>
-      </View>
+      {busy ? (
+        <View className="flex-row items-center gap-2">
+          {/* Mesma cor do texto desativado (neutral-700 / neutral-300). */}
+          <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#d4d4d4' : '#404040'} />
+          {labelText}
+        </View>
+      ) : (
+        labelText
+      )}
     </Pressable>
   );
 }
