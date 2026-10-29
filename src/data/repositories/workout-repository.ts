@@ -54,6 +54,8 @@ export interface WorkoutRepository {
    * versão com updatedAt mais recente (inclusive contra remoções locais).
    */
   importWorkouts(workouts: readonly Workout[], options?: ImportOptions): ImportSummary;
+  /** Mesmo que importWorkouts; nome comum usado pelo motor de sync. */
+  importRecords(workouts: readonly Workout[], options?: ImportOptions): ImportSummary;
   subscribe(listener: () => void): () => void;
 }
 
@@ -153,5 +155,6 @@ export function createWorkoutRepository(
     },
 
     importWorkouts: store.importRecords,
+    importRecords: store.importRecords,
   };
 }

@@ -1,18 +1,20 @@
-import type { Workout } from '../../../domain/workout';
+import { type Workout, parseWorkoutRecord } from '../../../domain/workout';
+import { type Shoe, parseShoeRecord } from '../../../domain/shoe';
+import { createShoeRepository } from '../../repositories/shoe-repository';
 import { createWorkoutRepository } from '../../repositories/workout-repository';
 import { InMemoryStorage } from '../../storage/key-value';
-import { type RemoteWorkout, type SyncRemote, createSyncEngine } from '../sync-engine';
+import { type Remote, type SyncRemote, createSyncEngine } from '../sync-engine';
 import { createSyncState } from '../sync-state';
 
 /** Servidor falso com as regras do trigger: LWW por updatedAt e relógio próprio. */
 function createFakeServer() {
-  const rows = new Map<string, RemoteWorkout>();
+  const rows = new Map<string, Remote<Workout>>();
   let clock = Date.parse('2026-10-29T12:00:00.000Z');
   const tick = () => new Date((clock += 1000)).toISOString();
   let failNext: Error | null = null;
   const pushes: Workout[][] = [];
 
-  const remote: SyncRemote = {
+  const remote: SyncRemote<Workout> = {
     async push(workouts) {
       if (failNext) {
         const error = failNext;
@@ -56,7 +58,7 @@ function createDevice(server: ReturnType<typeof createFakeServer>, name: string)
     now,
     onLocalChange: (ids) => state.markDirty(ids),
   });
-  const engine = createSyncEngine({ repo, remote: server.remote, state, now });
+  const engine = createSyncEngine({ repo, remote: server.remote, state, now, parse: parseWorkoutRecord });
   return { repo, state, engine, advance: (ms: number) => (clock += ms) };
 }
 
@@ -79,7 +81,7 @@ describe('SyncEngine', () => {
     createWorkoutRepository(storage, { generateId: () => 'old-1' }).create(newWorkout);
     const state = createSyncState(storage);
     const repo = createWorkoutRepository(storage);
-    const engine = createSyncEngine({ repo, remote: server.remote, state });
+    const engine = createSyncEngine({ repo, remote: server.remote, state, parse: parseWorkoutRecord });
 
     const result = await engine.sync();
 
@@ -222,7 +224,7 @@ describe('SyncEngine', () => {
       onLocalChange: (ids) => state.markDirty(ids),
     });
     for (let i = 0; i < 5; i++) repo.create(newWorkout);
-    const engine = createSyncEngine({ repo, remote: server.remote, state, batchSize: 2 });
+    const engine = createSyncEngine({ repo, remote: server.remote, state, batchSize: 2, parse: parseWorkoutRecord });
 
     await engine.sync();
 
@@ -239,4 +241,27 @@ describe('SyncEngine', () => {
     expect(first).toBe(second);
     expect(pull).toHaveBeenCalledTimes(1);
   });
+
+  it('funciona para outra coleção (tênis) com o mesmo motor', async () => {
+    const storage = new InMemoryStorage();
+    const state = createSyncState(storage, 'sync:v1:shoes:');
+    const repo = createShoeRepository(storage, { generateId: () => 'shoe-1', onLocalChange: (ids) => state.markDirty(ids) });
+    const rows = new Map<string, Remote<Shoe>>();
+    const remote: SyncRemote<Shoe> = {
+      async push(records) {
+        records.forEach((r) => rows.set(r.id, { ...r, serverUpdatedAt: '2026-10-29T12:00:00.000Z' }));
+      },
+      async pull() {
+        return [...rows.values()];
+      },
+    };
+    repo.create({ name: 'Pegasus' });
+
+    const result = await createSyncEngine({ repo, remote, state, parse: parseShoeRecord }).sync();
+
+    expect(result).toMatchObject({ ok: true, pushed: 1 });
+    expect(rows.get('shoe-1')?.name).toBe('Pegasus');
+    expect(state.getDirty()).toEqual([]);
+  });
 });
+

@@ -56,4 +56,19 @@ describe('SyncState', () => {
     state.setLastSync({ at: 'x' });
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it('estados com prefixos diferentes não se misturam', () => {
+    const storage = new InMemoryStorage();
+    const workouts = createSyncState(storage);
+    const shoes = createSyncState(storage, 'sync:v1:shoes:');
+    workouts.markDirty(['w1']);
+    shoes.markDirty(['s1']);
+    shoes.setBootstrapped();
+    expect(workouts.getDirty()).toEqual(['w1']);
+    expect(shoes.getDirty()).toEqual(['s1']);
+    expect(workouts.isBootstrapped()).toBe(false);
+    // Treinos mantêm as chaves originais (sem migração para quem já sincronizou).
+    expect(storage.getString('sync:v1:dirty')).toBe('["w1"]');
+  });
 });
+

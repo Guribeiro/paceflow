@@ -1,10 +1,5 @@
 import type { KeyValueStorage } from '../storage/key-value';
 
-const DIRTY_KEY = 'sync:v1:dirty';
-const CURSOR_KEY = 'sync:v1:cursor';
-const BOOTSTRAPPED_KEY = 'sync:v1:bootstrapped';
-const LAST_KEY = 'sync:v1:last';
-
 export interface LastSync {
   at: string;
   error?: string;
@@ -36,7 +31,15 @@ function readJson(storage: KeyValueStorage, key: string): unknown {
   }
 }
 
-export function createSyncState(storage: KeyValueStorage): SyncState {
+/**
+ * `prefix` separa o estado de cada coleção. Os treinos usam o padrão
+ * 'sync:v1:' (as chaves originais, sem migração); os tênis, 'sync:v1:shoes:'.
+ */
+export function createSyncState(storage: KeyValueStorage, prefix = 'sync:v1:'): SyncState {
+  const DIRTY_KEY = `${prefix}dirty`;
+  const CURSOR_KEY = `${prefix}cursor`;
+  const BOOTSTRAPPED_KEY = `${prefix}bootstrapped`;
+  const LAST_KEY = `${prefix}last`;
   const listeners = new Set<() => void>();
   // Cache para o useSyncExternalStore receber a mesma referência até mudar.
   let cachedLast: LastSync | null | undefined;

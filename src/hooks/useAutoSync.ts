@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
-import { isCloudConfigured, subscribeToAccount, syncNow } from '../data/cloud';
-import { syncState } from '../data/sync';
+import { hasPendingChanges, isCloudConfigured, subscribeToAccount, syncNow } from '../data/cloud';
+import { shoeRepository } from '../data/shoes';
 import { workoutRepository } from '../data/workouts';
 
 /** Espera após a última alteração local antes de sincronizar (agrupa edições). */
@@ -31,12 +31,14 @@ export function useAutoSync() {
 
     // O repositório também notifica quando o pull aplica dados do servidor;
     // só há o que enviar se a fila tiver pendências (evita sync em loop).
-    const unsubscribeRepo = workoutRepository.subscribe(() => {
+    const scheduleIfPending = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        if (syncState.getDirty().length > 0) run();
+        if (hasPendingChanges()) run();
       }, AUTO_SYNC_DELAY_MS);
-    });
+    };
+    const unsubscribeRepo = workoutRepository.subscribe(scheduleIfPending);
+    const unsubscribeShoes = shoeRepository.subscribe(scheduleIfPending);
 
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') run();
@@ -46,6 +48,7 @@ export function useAutoSync() {
       clearTimeout(timer);
       unsubscribeAccount();
       unsubscribeRepo();
+      unsubscribeShoes();
       appState.remove();
     };
   }, []);

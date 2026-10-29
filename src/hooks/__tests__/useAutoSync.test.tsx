@@ -8,6 +8,7 @@ import { AUTO_SYNC_DELAY_MS, useAutoSync } from '../useAutoSync';
 
 jest.mock('../../data/cloud', () => ({
   isCloudConfigured: true,
+  hasPendingChanges: () => jest.requireActual('../../data/sync').syncState.getDirty().length > 0,
   syncNow: jest.fn(() => Promise.resolve({ ok: true })),
   subscribeToAccount: jest.fn(),
 }));

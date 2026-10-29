@@ -23,16 +23,30 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "workouts": {
+            "shoes": {
                   Row: {
-                    "created_at": string,"date": string,"deleted_at": string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note": string | null,"rpe": number | null,"server_updated_at": string,"terrain": string,"updated_at": string,"user_id": string
+                    "created_at": string,"deleted_at": string | null,"id": string,"initial_meters": number,"limit_meters": number,"name": string,"retired_at": string | null,"server_updated_at": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at": string,"date": string,"deleted_at"?: string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"terrain": string,"updated_at": string,"user_id"?: string
+                    "created_at": string,"deleted_at"?: string | null,"id": string,"initial_meters"?: number,"limit_meters": number,"name": string,"retired_at"?: string | null,"server_updated_at"?: string,"updated_at": string,"user_id"?: string
                   }
                   Update: {
-                    "created_at"?: string,"date"?: string,"deleted_at"?: string | null,"distance_meters"?: number,"duration_seconds"?: number,"id"?: string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"terrain"?: string,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"initial_meters"?: number,"limit_meters"?: number,"name"?: string,"retired_at"?: string | null,"server_updated_at"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"workouts": {
+                  Row: {
+                    "created_at": string,"date": string,"deleted_at": string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note": string | null,"rpe": number | null,"server_updated_at": string,"shoe_id": string | null,"terrain": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at": string,"date": string,"deleted_at"?: string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"terrain": string,"updated_at": string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"date"?: string,"deleted_at"?: string | null,"distance_meters"?: number,"duration_seconds"?: number,"id"?: string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"terrain"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     

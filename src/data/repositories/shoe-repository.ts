@@ -29,6 +29,8 @@ export interface ShoeRepository {
   update(id: string, patch: ShoePatch): Result<Shoe, ShoeError>;
   remove(id: string): boolean;
   importShoes(shoes: readonly Shoe[], options?: ImportOptions): ImportSummary;
+  /** Mesmo que importShoes; nome comum usado pelo motor de sync. */
+  importRecords(shoes: readonly Shoe[], options?: ImportOptions): ImportSummary;
   subscribe(listener: () => void): () => void;
 }
 
@@ -62,6 +64,7 @@ export function createShoeRepository(
     getRecord: store.getRecord,
     subscribe: store.subscribe,
     importShoes: store.importRecords,
+    importRecords: store.importRecords,
 
     create(input) {
       const fields = {
