@@ -9,11 +9,11 @@ import { suggestedShoeId } from '../domain/shoe-mileage';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
-import { Button } from './ui/Button';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
-import { SectionHeader } from './ui/SectionHeader';
+import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { SectionHeader } from './ui/SectionHeader';
 
 interface Props {
   /** null enquanto distância ou tempo estão inválidos: o formulário segue montado e o botão desativa. */

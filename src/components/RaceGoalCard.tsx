@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import {
   type DistanceUnit,
@@ -18,11 +18,12 @@ import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
 import { TrainingPaces } from './TrainingPaces';
 import { Button } from './ui/Button';
-import { tabular } from './ui/typography';
+import { ButtonRow } from './ui/ButtonRow';
+import { Card } from './ui/Card';
+import { confirmDestructive } from './ui/confirm';
 import { Disclosure } from './ui/Disclosure';
 import { SectionHeader } from './ui/SectionHeader';
-import { Card } from './ui/Card';
-import { ButtonRow } from './ui/ButtonRow';
+import { tabular } from './ui/typography';
 
 const OTHER = 'other';
 
@@ -46,16 +47,12 @@ function weeksFromNow(weeks: number): string {
 }
 
 function confirmRemove(label: string, onConfirm: () => void) {
-  const message = 'A contagem, a projeção e o plano somem; os treinos continuam no diário.';
-  // No react-native-web o Alert.alert não faz nada; usa o confirm do navegador.
-  if (Platform.OS === 'web') {
-    if (window.confirm(`Remover a prova (${label})?\n${message}`)) onConfirm();
-    return;
-  }
-  Alert.alert(`Remover a prova (${label})?`, message, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Remover', style: 'destructive', onPress: onConfirm },
-  ]);
+  confirmDestructive({
+    title: `Remover a prova (${label})?`,
+    message: 'A contagem, a projeção e o plano somem; os treinos continuam no diário.',
+    confirmLabel: 'Remover',
+    onConfirm,
+  });
 }
 
 function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null; onSave: (g: RaceGoal) => void; onCancel: () => void }) {

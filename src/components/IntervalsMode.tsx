@@ -26,9 +26,9 @@ import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
 import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
-import { tabular } from './ui/typography';
-import { SectionHeader } from './ui/SectionHeader';
 import { Card } from './ui/Card';
+import { SectionHeader } from './ui/SectionHeader';
+import { tabular } from './ui/typography';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
 
@@ -109,6 +109,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
   const repMeters =
     repChoice === 'other' ? (other.ok && other.value > 0 ? Math.round(other.value) : null) : Number(repChoice);
   const lap = parseLapTime(lapText);
+  const lapError = lapText && lap === null ? 'Use 1:32 ou 92' : undefined;
   const stats = repMeters ? lapStats(laps, repMeters) : null;
   const autoNote = stats && repMeters ? describeSeries(stats, repMeters, unit) : '';
 
@@ -170,12 +171,15 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
             onChangeText={setLapText}
             placeholder="1:32 ou 92"
             keyboardType="numbers-and-punctuation"
-            error={lapText && lap === null ? 'Use 1:32 ou 92' : undefined}
+            error={lapError}
+            showErrorText={false}
             fill={false}
           />
         </View>
         <Button label="Adicionar volta" size="lg" onPress={addLap} disabled={lap === null} />
       </View>
+      {/* Erro abaixo da linha: dentro dela o botão alinharia com a mensagem, não com o campo. */}
+      {lapError ? <Text className="-mt-2 text-base font-semibold text-red-700 dark:text-red-400">{lapError}</Text> : null}
 
       {laps.length > 0 ? (
         <View className="rounded-xl border-2 border-black dark:border-white">

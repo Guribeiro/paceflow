@@ -5,7 +5,8 @@ import { Button } from './Button';
 import { SectionHeader } from './SectionHeader';
 
 interface Props {
-  title: string;
+  /** Sem título, só o botão (ex.: tabela alternativa a um gráfico). */
+  title?: string;
   /** Rótulos do botão, ex.: "Ver projeção" / "Ocultar projeção". */
   showLabel: string;
   hideLabel: string;
@@ -19,7 +20,7 @@ export function Disclosure({ title, showLabel, hideLabel, level = 1, children }:
 
   return (
     <View className="gap-2">
-      <SectionHeader level={level}>{title}</SectionHeader>
+      {title ? <SectionHeader level={level}>{title}</SectionHeader> : null}
       <Button
         label={open ? hideLabel : showLabel}
         variant="link"

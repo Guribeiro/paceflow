@@ -1,4 +1,5 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
 import { workoutRepository } from '../../data/workouts';
@@ -22,6 +23,13 @@ describe('Meta semanal', () => {
     expect(preferencesRepository.getWeeklyGoal()).toBe(20000);
     expect(screen.getByText('Atual: 20,00 km por semana.')).toBeOnTheScreen();
 
+    const alert = jest.spyOn(Alert, 'alert').mockImplementationOnce(() => {});
+    await user.press(screen.getByRole('button', { name: 'Remover meta' }));
+    expect(preferencesRepository.getWeeklyGoal()).toBe(20000); // cancelou
+
+    alert.mockImplementationOnce((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === 'Remover')?.onPress?.();
+    });
     await user.press(screen.getByRole('button', { name: 'Remover meta' }));
     expect(preferencesRepository.getWeeklyGoal()).toBeNull();
   });

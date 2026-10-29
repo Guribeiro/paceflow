@@ -5,6 +5,7 @@ import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKil
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { Field } from './Field';
 import { Button } from './ui/Button';
+import { confirmDestructive } from './ui/confirm';
 import { SectionHeader } from './ui/SectionHeader';
 
 /** Meta semanal digitada na unidade preferida e guardada em metros. */
@@ -43,7 +44,18 @@ export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
         <Button label="Salvar" accessibilityLabel="Salvar meta" size="lg" onPress={save} disabled={!valid} />
       </View>
       {goalMeters ? (
-        <Button label="Remover meta" variant="danger-link" onPress={() => setGoalMeters(null)} />
+        <Button
+          label="Remover meta"
+          variant="danger-link"
+          onPress={() =>
+            confirmDestructive({
+              title: 'Remover a meta semanal?',
+              message: 'O resumo da semana deixa de mostrar o progresso; os treinos não mudam.',
+              confirmLabel: 'Remover',
+              onConfirm: () => setGoalMeters(null),
+            })
+          }
+        />
       ) : null}
     </View>
   );

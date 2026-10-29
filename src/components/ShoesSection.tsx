@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { shoeRepository } from '../data/shoes';
 import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKilometers } from '../domain/pace';
@@ -9,10 +9,11 @@ import { useShoes } from '../hooks/useShoes';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Field } from './Field';
 import { Button } from './ui/Button';
+import { ButtonRow } from './ui/ButtonRow';
+import { Card } from './ui/Card';
+import { confirmDestructive } from './ui/confirm';
 import { ProgressBar } from './ui/ProgressBar';
 import { SectionHeader } from './ui/SectionHeader';
-import { Card } from './ui/Card';
-import { ButtonRow } from './ui/ButtonRow';
 
 const STATUS_LABEL: Record<ShoeStatus, string> = {
   ok: '',
@@ -21,15 +22,12 @@ const STATUS_LABEL: Record<ShoeStatus, string> = {
 };
 
 function confirmRemove(shoe: Shoe) {
-  const message = 'Os treinos continuam no diário, só sem o tênis.';
-  if (Platform.OS === 'web') {
-    if (window.confirm(`Excluir ${shoe.name}?\n${message}`)) shoeRepository.remove(shoe.id);
-    return;
-  }
-  Alert.alert(`Excluir ${shoe.name}?`, message, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: () => shoeRepository.remove(shoe.id) },
-  ]);
+  confirmDestructive({
+    title: `Excluir ${shoe.name}?`,
+    message: 'Os treinos continuam no diário, só sem o tênis.',
+    confirmLabel: 'Excluir',
+    onConfirm: () => shoeRepository.remove(shoe.id),
+  });
 }
 
 function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: DistanceUnit }) {
@@ -63,7 +61,7 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
         <ProgressBar ratio={ratio} />
         <Text className="text-base text-neutral-700 dark:text-neutral-300">{summary}</Text>
       </View>
-      <View className="flex-row flex-wrap justify-end gap-2">
+      <View className="flex-row flex-wrap justify-end gap-6">
         <Button
           label={retired ? 'Reativar' : 'Aposentar'}
           variant="link"

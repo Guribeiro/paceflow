@@ -6,8 +6,8 @@ import type { LastSync } from '../data/sync/sync-state';
 import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
 import { Button } from './ui/Button';
-import { SectionHeader } from './ui/SectionHeader';
 import { Card } from './ui/Card';
+import { SectionHeader } from './ui/SectionHeader';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

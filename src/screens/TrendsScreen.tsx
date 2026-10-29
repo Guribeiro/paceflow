@@ -6,9 +6,6 @@ import { KeyboardAware } from '../components/KeyboardAware';
 import { RaceGoalCard } from '../components/RaceGoalCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
-import { Button } from '../components/ui/Button';
-import { SectionHeader } from '../components/ui/SectionHeader';
-import { tabular } from '../components/ui/typography';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
@@ -16,6 +13,9 @@ import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
+import { Disclosure } from '../components/ui/Disclosure';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { tabular } from '../components/ui/typography';
 
 const WEEKS = 12;
 
@@ -49,7 +49,6 @@ export function TrendsScreen() {
   const weeks = useMemo(() => weeklyTotals(workouts, new Date(), WEEKS), [workouts]);
   const trends = useMemo(() => summarizeTrends(weeks), [weeks]);
   const [selected, setSelected] = useState(WEEKS - 1);
-  const [showTable, setShowTable] = useState(false);
 
   const paceIn = (secondsPerKm: number) => formatDuration(unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
   const week = weeks[selected];
@@ -112,14 +111,7 @@ export function TrendsScreen() {
                 ) : null}
               </View>
 
-              <Button
-                label={showTable ? 'Ocultar tabela' : 'Ver como tabela'}
-                variant="link"
-                expanded={showTable}
-                onPress={() => setShowTable((v) => !v)}
-              />
-
-              {showTable ? (
+              <Disclosure showLabel="Ver como tabela" hideLabel="Ocultar tabela">
                 <View className="rounded-xl border-2 border-black dark:border-white">
                   {[...weeks].reverse().map((w, i) => (
                     <View
@@ -137,7 +129,7 @@ export function TrendsScreen() {
                     </View>
                   ))}
                 </View>
-              ) : null}
+              </Disclosure>
             </>
           )}
         </ScrollView>

@@ -13,9 +13,11 @@ interface Props extends Pick<
   fill?: boolean;
   /** number: valores grandes e tabulares (pace, tempo); text: texto livre (nota, nome). */
   variant?: 'number' | 'text';
+  /** false quando quem usa mostra o erro fora da linha (a borda fica vermelha e o erro é falado). */
+  showErrorText?: boolean;
 }
 
-export function Field({ label, error, fill = true, variant = 'number', ...inputProps }: Props) {
+export function Field({ label, error, fill = true, variant = 'number', showErrorText = true, ...inputProps }: Props) {
   const placeholderColor = usePlaceholderColor();
   const isNumber = variant === 'number';
 
@@ -33,7 +35,7 @@ export function Field({ label, error, fill = true, variant = 'number', ...inputP
         placeholderTextColor={placeholderColor}
         style={isNumber ? tabular : undefined}
       />
-      {error ? <Text className="mt-1 text-base font-semibold text-red-700 dark:text-red-400">{error}</Text> : null}
+      {error && showErrorText ? <Text className="mt-1 text-base font-semibold text-red-700 dark:text-red-400">{error}</Text> : null}
     </View>
   );
 }

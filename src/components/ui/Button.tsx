@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, type PressableProps } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { ActivityIndicator, Pressable, Text, View, type PressableProps } from 'react-native';
 
 import { useStackedRow } from './ButtonRow';
 
@@ -11,6 +12,7 @@ interface Props extends Pick<PressableProps, 'onPress' | 'accessibilityHint' | '
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;
+  /** Ação em andamento: desativa e mostra um indicador ao lado do rótulo. */
   busy?: boolean;
   /** Ocupa a largura disponível numa linha de botões. */
   grow?: boolean;
@@ -32,8 +34,10 @@ const BOX: Record<ButtonVariant, string> = {
   primary: 'rounded-xl bg-black px-4 dark:bg-white active:opacity-70',
   secondary: 'rounded-xl border-2 border-black px-4 dark:border-white active:opacity-70',
   danger: 'rounded-xl border-2 border-red-700 px-4 dark:border-red-400 active:opacity-70',
-  link: 'self-start px-2 active:opacity-60',
-  'danger-link': 'self-start px-2 active:opacity-60',
+  // Sem padding lateral: o texto alinha com o título acima. A área de toque mantém
+  // 48 pt de altura e pelo menos 48 pt de largura (min-w-12).
+  link: 'min-w-12 self-start active:opacity-60',
+  'danger-link': 'min-w-12 self-start active:opacity-60',
 };
 
 const LABEL: Record<ButtonVariant, string> = {
@@ -58,20 +62,26 @@ export function Button({
 }: Props) {
   // Numa ButtonRow empilhada (fonte grande) o botão ocupa a largura toda, sem flex-1.
   const stacked = useStackedRow();
+  const { colorScheme } = useColorScheme();
+  const off = disabled || busy;
   const isLink = variant === 'link' || variant === 'danger-link';
-  const box = disabled && !isLink ? `rounded-xl px-4 ${DISABLED_BOX}` : BOX[variant];
-  const text = disabled ? DISABLED_TEXT : LABEL[variant];
+  const box = off && !isLink ? `rounded-xl px-4 ${DISABLED_BOX}` : BOX[variant];
+  const text = off ? DISABLED_TEXT : LABEL[variant];
 
   return (
     <Pressable
       {...props}
-      disabled={disabled}
+      disabled={off}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled, busy, expanded }}
+      accessibilityState={{ disabled: off, busy, expanded }}
       className={`${HEIGHT[size]} items-center justify-center ${grow && !stacked ? 'flex-1' : ''} ${box}`}
     >
-      <Text className={`${isLink ? 'text-base' : TEXT_SIZE[size]} ${text}`}>{label}</Text>
+      <View className="flex-row items-center gap-2">
+        {/* Mesma cor do texto desativado (neutral-700 / neutral-300). */}
+        {busy ? <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#d4d4d4' : '#404040'} /> : null}
+        <Text className={`${isLink ? 'text-base' : TEXT_SIZE[size]} ${text}`}>{label}</Text>
+      </View>
     </Pressable>
   );
 }

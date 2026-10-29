@@ -10,9 +10,6 @@ import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { TrainingPaces } from '../components/TrainingPaces';
 import { UnitToggle } from '../components/UnitToggle';
-import { Card } from '../components/ui/Card';
-import { Disclosure } from '../components/ui/Disclosure';
-import { tabular } from '../components/ui/typography';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import {
@@ -24,6 +21,9 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
+import { Card } from '../components/ui/Card';
+import { Disclosure } from '../components/ui/Disclosure';
+import { tabular } from '../components/ui/typography';
 
 const INCOMPLETE = 'Informe distância e tempo válidos.';
 

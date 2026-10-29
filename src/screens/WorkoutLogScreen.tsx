@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { tabular } from '../components/ui/typography';
 import { workoutRepository } from '../data/workouts';
 import {
   type DistanceUnit,
@@ -24,6 +21,10 @@ import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useShoes } from '../hooks/useShoes';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { confirmDestructive } from '../components/ui/confirm';
+import { tabular } from '../components/ui/typography';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'short',
@@ -34,18 +35,12 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
 });
 
 function confirmRemove(workout: Workout, unit: DistanceUnit) {
-  const summary = `${formatDistance(workout.distanceMeters, unit)} ${unit} em ${formatDuration(workout.durationSeconds)}`;
-
-  // No react-native-web o Alert.alert não faz nada; usa o confirm do navegador.
-  if (Platform.OS === 'web') {
-    if (window.confirm(`Excluir treino?\n${summary}`)) workoutRepository.remove(workout.id);
-    return;
-  }
-
-  Alert.alert('Excluir treino?', summary, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: () => workoutRepository.remove(workout.id) },
-  ]);
+  confirmDestructive({
+    title: 'Excluir treino?',
+    message: `${formatDistance(workout.distanceMeters, unit)} ${unit} em ${formatDuration(workout.durationSeconds)}`,
+    confirmLabel: 'Excluir',
+    onConfirm: () => workoutRepository.remove(workout.id),
+  });
 }
 
 function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
@@ -103,7 +98,7 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
       ) : (
         <>
           <WorkoutDetails workout={workout} unit={unit} shoeName={shoeName} />
-          <View className="flex-row flex-wrap justify-end gap-2">
+          <View className="flex-row flex-wrap justify-end gap-6">
             <Button label="Editar" variant="link" accessibilityLabel="Editar treino" onPress={() => setEditing(true)} />
             <Button
               label="Excluir"

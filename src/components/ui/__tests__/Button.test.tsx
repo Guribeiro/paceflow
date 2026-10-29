@@ -41,6 +41,17 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Ver como tabela' })).toBeCollapsed();
   });
 
+  it('ocupado desativa sozinho', async () => {
+    const onPress = jest.fn();
+    await render(<Button label="Enviando…" busy onPress={onPress} />);
+
+    const button = screen.getByRole('button', { name: 'Enviando…' });
+    await userEvent.press(button);
+
+    expect(onPress).not.toHaveBeenCalled();
+    expect(button).toBeDisabled();
+  });
+
   it.each(['primary', 'secondary', 'link', 'danger', 'danger-link'] as const)('variante %s renderiza o texto', async (variant) => {
     await render(<Button label="Ok" variant={variant} onPress={() => {}} />);
 
