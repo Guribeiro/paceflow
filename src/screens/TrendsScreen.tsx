@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { RaceGoalCard } from '../components/RaceGoalCard';
+import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
@@ -58,6 +59,7 @@ export function TrendsScreen() {
           </Text>
 
           <RaceGoalCard unit={unit} />
+          <TrainingPlan unit={unit} />
 
           {trends.activeWeeks === 0 ? (
             <Text className="text-lg text-neutral-700 dark:text-neutral-300">
