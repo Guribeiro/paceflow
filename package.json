@@ -51,7 +51,12 @@
     "typecheck": "tsc --noEmit",
     "start:device": "expo start --dev-client --tunnel",
     "build:android:dev": "npx eas-cli@latest build --profile development --platform android",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > src/data/sync/database.types.ts"
   },
   "private": true,
   "jest": {
