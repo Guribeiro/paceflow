@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, type PressableProps } from 'react-native';
 
+import { useStackedRow } from './ButtonRow';
+
 export type ButtonVariant = 'primary' | 'secondary' | 'link' | 'danger' | 'danger-link';
 export type ButtonSize = 'md' | 'lg';
 
@@ -54,6 +56,8 @@ export function Button({
   expanded,
   ...props
 }: Props) {
+  // Numa ButtonRow empilhada (fonte grande) o botão ocupa a largura toda, sem flex-1.
+  const stacked = useStackedRow();
   const isLink = variant === 'link' || variant === 'danger-link';
   const box = disabled && !isLink ? `rounded-xl px-4 ${DISABLED_BOX}` : BOX[variant];
   const text = disabled ? DISABLED_TEXT : LABEL[variant];
@@ -65,7 +69,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled, busy, expanded }}
-      className={`${HEIGHT[size]} items-center justify-center ${grow ? 'flex-1' : ''} ${box}`}
+      className={`${HEIGHT[size]} items-center justify-center ${grow && !stacked ? 'flex-1' : ''} ${box}`}
     >
       <Text className={`${isLink ? 'text-base' : TEXT_SIZE[size]} ${text}`}>{label}</Text>
     </Pressable>

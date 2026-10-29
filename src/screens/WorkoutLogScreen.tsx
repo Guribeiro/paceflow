@@ -97,7 +97,7 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
   const [editing, setEditing] = useState(false);
 
   return (
-    <View className="gap-2 rounded-xl border-2 border-black p-4 dark:border-white">
+    <Card gap={2}>
       {editing ? (
         <EditWorkoutForm workout={workout} unit={unit} onDone={() => setEditing(false)} />
       ) : (
@@ -114,7 +114,7 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
           </View>
         </>
       )}
-    </View>
+    </Card>
   );
 }
 

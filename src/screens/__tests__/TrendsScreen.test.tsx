@@ -52,8 +52,8 @@ describe('TrendsScreen', () => {
     const user = userEvent.setup();
     await render(<TrendsScreen />);
     await user.press(screen.getByRole('button', { name: 'Ver como tabela' }));
-    expect(screen.getAllByText(/km · \d+$/)).toHaveLength(12);
+    expect(screen.getAllByText(/km · \d+ treinos?$/)).toHaveLength(12);
     await user.press(screen.getByRole('button', { name: 'Ocultar tabela' }));
-    expect(screen.queryAllByText(/km · \d+$/)).toHaveLength(0);
+    expect(screen.queryAllByText(/km · \d+ treinos?$/)).toHaveLength(0);
   });
 });

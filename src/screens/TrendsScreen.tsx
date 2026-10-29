@@ -15,15 +15,18 @@ import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
+import { Card } from '../components/ui/Card';
 
 const WEEKS = 12;
 
 function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <View
+    <Card
       accessible
       accessibilityLabel={`${label}: ${value}${detail ? `, ${detail}` : ''}`}
-      className="min-w-36 flex-1 gap-1 rounded-xl border-2 border-black p-3 dark:border-white"
+      gap={1}
+      compact
+      className="min-w-36 flex-1"
     >
       <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</Text>
       <Text
@@ -34,7 +37,7 @@ function StatTile({ label, value, detail }: { label: string; value: string; deta
         {value}
       </Text>
       {detail ? <Text className="text-sm text-neutral-700 dark:text-neutral-300">{detail}</Text> : null}
-    </View>
+    </Card>
   );
 }
 
@@ -122,13 +125,14 @@ export function TrendsScreen() {
                     <View
                       key={w.weekStart}
                       accessible
+                      accessibilityLabel={`Semana de ${weekLabel(w.weekStart)}: ${formatDistance(w.distanceMeters, unit)} ${unit}, ${w.count} ${w.count === 1 ? 'treino' : 'treinos'}`}
                       className={`flex-row flex-wrap justify-between gap-x-4 px-4 py-2 ${
                         i > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
                       }`}
                     >
                       <Text className="text-base text-black dark:text-white">{weekLabel(w.weekStart)}</Text>
                       <Text className="text-base font-semibold text-black dark:text-white" style={tabular}>
-                        {formatDistance(w.distanceMeters, unit)} {unit} · {w.count}
+                        {formatDistance(w.distanceMeters, unit)} {unit} · {w.count} {w.count === 1 ? 'treino' : 'treinos'}
                       </Text>
                     </View>
                   ))}

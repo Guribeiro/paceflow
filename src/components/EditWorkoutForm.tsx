@@ -19,6 +19,7 @@ import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
+import { ButtonRow } from './ui/ButtonRow';
 
 interface Props {
   workout: Workout;
@@ -105,10 +106,10 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
         </Text>
       ) : null}
 
-      <View className="flex-row gap-3">
+      <ButtonRow>
         <Button label="Cancelar" variant="secondary" size="lg" grow onPress={onDone} />
         <Button label="Salvar" size="lg" grow onPress={save} disabled={!canSave} />
-      </View>
+      </ButtonRow>
     </View>
   );
 }

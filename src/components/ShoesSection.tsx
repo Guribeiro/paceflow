@@ -3,7 +3,7 @@ import { Alert, Platform, Text, View } from 'react-native';
 
 import { shoeRepository } from '../data/shoes';
 import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKilometers } from '../domain/pace';
-import { DEFAULT_SHOE_LIMIT_METERS, type Shoe } from '../domain/shoe';
+import { DEFAULT_SHOE_LIMIT_METERS, SHOE_NAME_MAX_LENGTH, type Shoe } from '../domain/shoe';
 import { type ShoeStatus, shoeMileage, shoeStatus } from '../domain/shoe-mileage';
 import { useShoes } from '../hooks/useShoes';
 import { useWorkouts } from '../hooks/useWorkouts';
@@ -11,6 +11,8 @@ import { Field } from './Field';
 import { Button } from './ui/Button';
 import { ProgressBar } from './ui/ProgressBar';
 import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
+import { ButtonRow } from './ui/ButtonRow';
 
 const STATUS_LABEL: Record<ShoeStatus, string> = {
   ok: '',
@@ -37,7 +39,7 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
   const summary = `${formatDistance(meters, unit)} de ${formatDistance(shoe.limitMeters, unit)} ${unit}`;
 
   return (
-    <View className="gap-2 rounded-xl border-2 border-black p-3 dark:border-white">
+    <Card gap={2} compact>
       <View
         accessible
         accessibilityRole="progressbar"
@@ -69,7 +71,7 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
         />
         <Button label="Excluir" variant="danger-link" onPress={() => confirmRemove(shoe)} />
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -94,8 +96,16 @@ function AddShoeForm({ unit, onDone }: { unit: DistanceUnit; onDone: () => void 
   }
 
   return (
-    <View className="gap-3 rounded-xl border-2 border-black p-3 dark:border-white">
-      <Field label="Nome do tênis" value={name} onChangeText={setName} placeholder="Ex.: Pegasus 41" fill={false} />
+    <Card compact>
+      <Field
+        label="Nome do tênis"
+        variant="text"
+        value={name}
+        onChangeText={setName}
+        placeholder="Ex.: Pegasus 41"
+        maxLength={SHOE_NAME_MAX_LENGTH}
+        fill={false}
+      />
       <Field
         label={`Já rodados (${unit}, opcional)`}
         value={initialText}
@@ -114,11 +124,11 @@ function AddShoeForm({ unit, onDone }: { unit: DistanceUnit; onDone: () => void 
         error={limitOk ? undefined : 'Use um número maior que zero'}
         fill={false}
       />
-      <View className="flex-row flex-wrap gap-3">
+      <ButtonRow>
         <Button label="Cancelar" variant="secondary" grow onPress={onDone} />
         <Button label="Salvar" accessibilityLabel="Salvar tênis" grow onPress={save} disabled={!canSave} />
-      </View>
-    </View>
+      </ButtonRow>
+    </Card>
   );
 }
 

@@ -28,6 +28,7 @@ import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { tabular } from './ui/typography';
 import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
 
@@ -140,7 +141,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
   }
 
   return (
-    <View className="gap-4 rounded-xl border-2 border-black p-4 dark:border-white">
+    <Card gap={4}>
       <SectionHeader>Registrar série</SectionHeader>
 
       <ChoiceChips
@@ -248,12 +249,13 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
       {status !== 'idle' ? (
         <Text
           accessibilityLiveRegion="polite"
+          accessibilityLabel={status === 'saved' ? 'Série salva no diário' : undefined}
           className={`text-base font-semibold ${status === 'saved' ? 'text-black dark:text-white' : 'text-red-700 dark:text-red-400'}`}
         >
           {status === 'saved' ? '✓ Série salva no diário' : 'Não foi possível salvar a série.'}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 

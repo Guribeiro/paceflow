@@ -42,7 +42,20 @@ describe('CalculatorScreen', () => {
     await fillIn('5', '5:75');
     expect(screen.getByText('Use mm:ss ou h:mm:ss')).toBeOnTheScreen();
     expect(screen.getByLabelText('Pace: informe distância e tempo')).toBeOnTheScreen();
-    expect(screen.queryByText('Registrar no diário')).not.toBeOnTheScreen();
+    // "5:7" chegou a calcular enquanto digitava; o formulário segue montado, mas sem salvar.
+    expect(screen.getByRole('button', { name: 'Informe distância e tempo' })).toBeDisabled();
+  });
+
+  it('corrigir o tempo não apaga o que foi escolhido no registro', async () => {
+    const user = await fillIn('5', '25:00');
+    await user.press(screen.getByRole('radio', { name: 'Pista' }));
+    await user.type(screen.getByLabelText('Tempo'), 'x');
+    expect(screen.getByRole('button', { name: 'Informe distância e tempo' })).toBeDisabled();
+
+    await user.clear(screen.getByLabelText('Tempo'));
+    await user.type(screen.getByLabelText('Tempo'), '24:00');
+    expect(screen.getByRole('radio', { name: 'Pista' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Salvar treino' })).toBeEnabled();
   });
 
   it('troca para milhas e lembra a preferência', async () => {
@@ -75,7 +88,7 @@ describe('CalculatorScreen', () => {
     await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
     const after = workoutRepository.list().length;
 
-    const saved = screen.getByRole('button', { name: 'Salvo ✓' });
+    const saved = screen.getByRole('button', { name: 'Treino salvo' });
     expect(saved).toBeDisabled();
     await user.press(saved);
     expect(workoutRepository.list()).toHaveLength(after);

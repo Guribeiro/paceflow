@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
@@ -13,6 +13,7 @@ import type { DistanceUnit } from '../domain/pace';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { useWorkouts } from '../hooks/useWorkouts';
+import { Card } from '../components/ui/Card';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; spoken: string }[] = [
   { value: 'system', label: 'Sistema', spoken: 'Tema do sistema' },
@@ -47,13 +48,13 @@ export function SettingsScreen() {
 
           <AccountSection />
 
-          <View className="gap-1 rounded-xl border-2 border-black p-4 dark:border-white">
+          <Card gap={1}>
             <Text className="text-lg font-bold text-black dark:text-white">PaceFlow {Constants.expoConfig?.version}</Text>
             <Text className="text-base text-neutral-700 dark:text-neutral-300">
               Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup acima
               exporta e restaura arquivos.
             </Text>
-          </View>
+          </Card>
         </ScrollView>
       </KeyboardAware>
     </SafeAreaView>

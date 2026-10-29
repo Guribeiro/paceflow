@@ -21,6 +21,8 @@ import { Button } from './ui/Button';
 import { tabular } from './ui/typography';
 import { Disclosure } from './ui/Disclosure';
 import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
+import { ButtonRow } from './ui/ButtonRow';
 
 const OTHER = 'other';
 
@@ -102,7 +104,7 @@ function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null;
         error={targetOk ? undefined : 'Use h:mm:ss ou mm:ss'}
         fill={false}
       />
-      <View className="flex-row flex-wrap gap-3">
+      <ButtonRow>
         <Button label="Cancelar" variant="secondary" grow onPress={onCancel} />
         <Button
           label="Salvar prova"
@@ -113,7 +115,7 @@ function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null;
             onSave({ distanceKm: distanceKm!, date: date!, ...(target?.ok && { targetSeconds: target.value }) })
           }
         />
-      </View>
+      </ButtonRow>
     </View>
   );
 }
@@ -130,7 +132,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
 
   if (editing) {
     return (
-      <View className="gap-3 rounded-xl border-2 border-black p-4 dark:border-white">
+      <Card>
         {header}
         <RaceGoalForm
           initial={goal}
@@ -140,19 +142,19 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
             setEditing(false);
           }}
         />
-      </View>
+      </Card>
     );
   }
 
   if (!goal) {
     return (
-      <View className="gap-3 rounded-xl border-2 border-black p-4 dark:border-white">
+      <Card>
         {header}
         <Text className="text-base text-neutral-700 dark:text-neutral-300">
           Defina uma prova para ver a contagem regressiva, o pace-alvo e quanto falta pela sua forma atual.
         </Text>
         <Button label="Definir prova-alvo" onPress={() => setEditing(true)} />
-      </View>
+      </Card>
     );
   }
 
@@ -187,7 +189,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
   }
 
   return (
-    <View className="gap-3 rounded-xl border-2 border-black p-4 dark:border-white">
+    <Card>
       {header}
       <View accessible className="gap-1">
         <Text className="text-xl font-bold text-black dark:text-white">{raceLabel(goal.distanceKm)}</Text>
@@ -208,7 +210,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
         </Disclosure>
       ) : null}
 
-      <View className="flex-row flex-wrap gap-3">
+      <ButtonRow>
         <Button label="Editar" variant="secondary" grow onPress={() => setEditing(true)} />
         <Button
           label="Remover"
@@ -217,7 +219,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
           grow
           onPress={() => confirmRemove(raceLabel(goal.distanceKm), () => setGoal(null))}
         />
-      </View>
-    </View>
+      </ButtonRow>
+    </Card>
   );
 }

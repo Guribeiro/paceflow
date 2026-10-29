@@ -7,6 +7,7 @@ import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -55,6 +56,9 @@ function SignInForm() {
         </Text>
         <Field
           label="E-mail"
+          variant="text"
+          autoCapitalize="none"
+          autoComplete="email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -140,9 +144,9 @@ export function AccountSection() {
   if (!isCloudConfigured || email === undefined) return null;
 
   return (
-    <View className="gap-3 rounded-xl border-2 border-black p-4 dark:border-white">
+    <Card>
       <SectionHeader>Conta e backup na nuvem</SectionHeader>
       {email ? <SignedIn email={email} /> : <SignInForm />}
-    </View>
+    </Card>
   );
 }

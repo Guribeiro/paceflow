@@ -10,6 +10,8 @@ import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { TrainingPaces } from '../components/TrainingPaces';
 import { UnitToggle } from '../components/UnitToggle';
+import { Card } from '../components/ui/Card';
+import { Disclosure } from '../components/ui/Disclosure';
 import { tabular } from '../components/ui/typography';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
@@ -22,8 +24,8 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
-import { Disclosure } from '../components/ui/Disclosure';
 
+const INCOMPLETE = 'Informe distância e tempo válidos.';
 
 export function CalculatorScreen() {
   const [unit, setUnit] = usePreferredUnit();
@@ -50,6 +52,12 @@ export function CalculatorScreen() {
     return result.ok ? result.value : null;
   }, [pace, duration]);
 
+  // Depois do primeiro cálculo o registro e as consultas ficam montados: corrigir um
+  // dígito do tempo não apaga terreno, RPE e nota nem fecha as seções abertas.
+  // (setState durante o render é o padrão do React para estado derivado de props.)
+  const [hasResult, setHasResult] = useState(false);
+  if (pace && !hasResult) setHasResult(true);
+
   // O pace de intervalado do esforço calculado vira a sugestão do modo Tiros.
   const suggestedInterval = useMemo(() => {
     if (!pace || !duration.ok) return null;
@@ -66,7 +74,7 @@ export function CalculatorScreen() {
   const speedUnit = unit === 'km' ? 'km/h' : 'mph';
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black">
+    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
       <KeyboardAware>
         <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
           <View className={`${large ? 'flex-col items-start gap-3' : 'flex-row items-center justify-between'}`}>
@@ -110,8 +118,10 @@ export function CalculatorScreen() {
               </View>
 
               <View className={`${row} gap-3`} testID="calculator-results">
-                <View
-                  className={`${cell} rounded-xl bg-black p-4 dark:bg-white`}
+                <Card
+                  variant="inverted"
+                  gap={0}
+                  className={cell}
                   accessible
                   accessibilityLabel={
                     mainPace !== undefined
@@ -128,9 +138,10 @@ export function CalculatorScreen() {
                     {mainPace !== undefined ? formatDuration(mainPace) : '--:--'}
                   </Text>
                   <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">min/{unit}</Text>
-                </View>
-                <View
-                  className={`${cell} rounded-xl border-2 border-black p-4 dark:border-white`}
+                </Card>
+                <Card
+                  gap={0}
+                  className={cell}
                   accessible
                   accessibilityLabel={
                     mainSpeed !== undefined
@@ -147,25 +158,36 @@ export function CalculatorScreen() {
                     {mainSpeed !== undefined ? mainSpeed.toFixed(1).replace('.', ',') : '--'}
                   </Text>
                   <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{speedUnit}</Text>
-                </View>
+                </Card>
               </View>
 
               {/* A ação mais usada logo abaixo do resultado; consultas ficam recolhidas. */}
-              {pace && duration.ok ? (
+              {hasResult ? (
                 <>
-                  <SaveWorkoutForm distanceKm={pace.distanceKm} durationSeconds={duration.value} />
+                  <SaveWorkoutForm
+                    distanceKm={pace?.distanceKm ?? null}
+                    durationSeconds={pace && duration.ok ? duration.value : null}
+                  />
 
-                  {races ? (
-                    <Disclosure title="Projeção de provas" showLabel="Ver projeção" hideLabel="Ocultar projeção">
-                      <RaceTable races={races} />
-                      <Text className="text-sm text-neutral-700 dark:text-neutral-300">
-                        Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
-                      </Text>
-                    </Disclosure>
-                  ) : null}
+                  <Disclosure title="Projeção de provas" showLabel="Ver projeção" hideLabel="Ocultar projeção">
+                    {races ? (
+                      <>
+                        <RaceTable races={races} />
+                        <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+                          Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
+                        </Text>
+                      </>
+                    ) : (
+                      <Text className="text-base text-neutral-700 dark:text-neutral-300">{INCOMPLETE}</Text>
+                    )}
+                  </Disclosure>
 
                   <Disclosure title="Paces de treino" showLabel="Ver paces" hideLabel="Ocultar paces">
-                    <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
+                    {pace && duration.ok ? (
+                      <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
+                    ) : (
+                      <Text className="text-base text-neutral-700 dark:text-neutral-300">{INCOMPLETE}</Text>
+                    )}
                   </Disclosure>
                 </>
               ) : (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
@@ -13,10 +13,12 @@ import { Button } from './ui/Button';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 interface Props {
-  distanceKm: number;
-  durationSeconds: number;
+  /** null enquanto distância ou tempo estão inválidos: o formulário segue montado e o botão desativa. */
+  distanceKm: number | null;
+  durationSeconds: number | null;
 }
 
 export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
@@ -26,9 +28,9 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   // Esforço já salvo: o botão só reativa quando o esforço ou algum campo muda,
   // senão um segundo toque gravaria o mesmo treino de novo.
-  const effortKey = `${distanceKm}|${durationSeconds}`;
+  const effortKey = distanceKm !== null && durationSeconds !== null ? `${distanceKm}|${durationSeconds}` : null;
   const [savedEffort, setSavedEffort] = useState<string | null>(null);
-  const saved = savedEffort === effortKey;
+  const saved = effortKey !== null && savedEffort === effortKey;
   // Recalculado a cada render: um app aberto desde ontem não oferece "Hoje" errado.
   const days = recentDays();
   const [dayKey, setDayKey] = useState(days[0].key);
@@ -47,7 +49,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   }
 
   function save() {
-    if (!terrain || saved) return;
+    if (!terrain || saved || distanceKm === null || durationSeconds === null) return;
     const result = workoutRepository.create({
       date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
@@ -68,7 +70,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   }
 
   return (
-    <View className="gap-4 rounded-xl border-2 border-black p-4 dark:border-white">
+    <Card gap={4}>
       <SectionHeader>Registrar no diário</SectionHeader>
 
       <ChoiceChips
@@ -97,16 +99,26 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
       />
 
       <Button
-        label={saved ? 'Salvo ✓' : terrain ? 'Salvar treino' : 'Escolha o terreno'}
+        label={
+          effortKey === null
+            ? 'Informe distância e tempo'
+            : saved
+              ? 'Salvo ✓'
+              : terrain
+                ? 'Salvar treino'
+                : 'Escolha o terreno'
+        }
+        accessibilityLabel={saved ? 'Treino salvo' : undefined}
         onPress={save}
-        disabled={!terrain || saved}
+        disabled={effortKey === null || !terrain || saved}
         size="lg"
-        accessibilityHint={terrain ? undefined : 'Escolha o terreno para salvar'}
+        accessibilityHint={effortKey !== null && !terrain ? 'Escolha o terreno para salvar' : undefined}
       />
 
       {status === 'error' || (status === 'saved' && saved) ? (
         <Text
           accessibilityLiveRegion="polite"
+          accessibilityLabel={status === 'saved' ? 'Treino salvo no diário' : undefined}
           className={`text-base font-semibold ${
             status === 'saved' ? 'text-black dark:text-white' : 'text-red-700 dark:text-red-400'
           }`}
@@ -114,6 +126,6 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
           {status === 'saved' ? '✓ Treino salvo no diário' : 'Não foi possível salvar o treino.'}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }

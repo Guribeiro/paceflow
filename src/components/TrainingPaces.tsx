@@ -11,7 +11,6 @@ import {
 } from '../domain/pace';
 import { tabular } from './ui/typography';
 
-
 const ZONES: { zone: TrainingZone; label: string; hint: string; showLap?: boolean }[] = [
   { zone: 'easy', label: 'Leve / longão', hint: 'Conversa fácil; a maior parte da semana' },
   { zone: 'marathon', label: 'Maratona', hint: 'Ritmo de prova da maratona' },

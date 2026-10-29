@@ -3,7 +3,10 @@ import { Text, TextInput, View, type TextInputProps } from 'react-native';
 import { usePlaceholderColor } from './placeholder-color';
 import { tabular } from './ui/typography';
 
-interface Props extends Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'keyboardType' | 'maxLength'> {
+interface Props extends Pick<
+    TextInputProps,
+    'value' | 'onChangeText' | 'placeholder' | 'keyboardType' | 'maxLength' | 'autoCapitalize' | 'autoComplete'
+  > {
   label: string;
   error?: string;
   /** false quando o campo está numa coluna: flex-1 encolheria a altura a zero. */
