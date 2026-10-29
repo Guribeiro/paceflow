@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Field } from '../components/Field';
 import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
+import { TrainingPaces } from '../components/TrainingPaces';
 import { UnitToggle } from '../components/UnitToggle';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
@@ -140,6 +141,15 @@ export function CalculatorScreen() {
             </Text>
           )}
         </View>
+
+        {pace && duration.ok ? (
+          <View className="gap-2">
+            <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
+              Paces de treino
+            </Text>
+            <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
+          </View>
+        ) : null}
 
         {pace && duration.ok ? (
           <SaveWorkoutForm distanceKm={pace.distanceKm} durationSeconds={duration.value} />

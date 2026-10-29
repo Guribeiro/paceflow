@@ -68,5 +68,17 @@ describe('CalculatorScreen', () => {
     yesterday.setDate(yesterday.getDate() - 1);
     expect(saved.toDateString()).toBe(yesterday.toDateString());
   });
+
+  it('sugere paces de treino a partir do esforço', async () => {
+    await fillIn('5', '19:57');
+    expect(screen.getByLabelText(/^Limiar: 4 minutos e 15 segundos por quilômetro/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Intervalado: 3 minutos e 55 segundos por quilômetro, 1 minuto e 34 segundos a cada 400 metros/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Leve \/ longão: entre 5 minutos e 7 segundos e 5 minutos e 39 segundos/)).toBeOnTheScreen();
+  });
+
+  it('explica quando o esforço não serve para paces de treino', async () => {
+    await fillIn('0,4', '1:30');
+    expect(screen.getByText(/Para sugerir paces de treino, use um esforço de prova entre 1,5 e 42,2 km/)).toBeOnTheScreen();
+  });
 });
 

@@ -4,3 +4,4 @@ export * from './time-format';
 export * from './pace';
 export * from './predictor';
 export * from './parse-distance';
+export * from './training-paces';
