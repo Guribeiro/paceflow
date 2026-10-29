@@ -1,4 +1,4 @@
-import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import { Alert, FlatList, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { workoutRepository } from '../data/workouts';
@@ -19,7 +19,15 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
 const formatKm = (meters: number) => (meters / 1000).toFixed(2).replace('.', ',');
 
 function confirmRemove(workout: Workout) {
-  Alert.alert('Excluir treino?', `${formatKm(workout.distanceMeters)} km em ${formatDuration(workout.durationSeconds)}`, [
+  const summary = `${formatKm(workout.distanceMeters)} km em ${formatDuration(workout.durationSeconds)}`;
+
+  // No react-native-web o Alert.alert não faz nada; usa o confirm do navegador.
+  if (Platform.OS === 'web') {
+    if (window.confirm(`Excluir treino?\n${summary}`)) workoutRepository.remove(workout.id);
+    return;
+  }
+
+  Alert.alert('Excluir treino?', summary, [
     { text: 'Cancelar', style: 'cancel' },
     { text: 'Excluir', style: 'destructive', onPress: () => workoutRepository.remove(workout.id) },
   ]);
