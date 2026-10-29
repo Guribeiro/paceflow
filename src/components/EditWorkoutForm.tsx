@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
 import {
@@ -12,10 +12,12 @@ import {
 } from '../domain/pace';
 import { NOTE_MAX_LENGTH, type Workout } from '../domain/workout';
 import { dateOnDay, dayKeyOf, recentDays } from '../domain/workout-date';
+import { useLargeText } from '../hooks/useLargeText';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
+import { Button } from './ui/Button';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
 interface Props {
@@ -33,6 +35,8 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
   const [rpe, setRpe] = useState<number | undefined>(workout.rpe);
   const [note, setNote] = useState(workout.note ?? '');
   const [failed, setFailed] = useState(false);
+  // Com fonte grande, os campos empilham (como na Calculadora).
+  const large = useLargeText();
   const shoes = useShoes();
   const [shoeId, setShoeId] = useState(workout.shoeId ?? NO_SHOE);
   const originalDayKey = dayKeyOf(workout.date);
@@ -69,13 +73,14 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
 
   return (
     <View className="gap-4">
-      <View className="flex-row gap-3">
+      <View className={`${large ? 'flex-col' : 'flex-row'} gap-3`}>
         <Field
           label={`Distância (${unit})`}
           value={distanceText}
           onChangeText={setDistanceText}
           keyboardType="decimal-pad"
           error={distanceError}
+          fill={!large}
         />
         <Field
           label="Tempo"
@@ -83,6 +88,7 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
           onChangeText={setDurationText}
           keyboardType="numbers-and-punctuation"
           error={durationError}
+          fill={!large}
         />
       </View>
 
@@ -91,16 +97,7 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
       <ChoiceChips label="Terreno" options={TERRAIN_OPTIONS} value={terrain} onChange={(v) => v && setTerrain(v)} />
       <ChoiceChips label="Esforço percebido (RPE)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
 
-      <View className="gap-1">
-        <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Nota</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          maxLength={NOTE_MAX_LENGTH}
-          accessibilityLabel="Nota"
-          className="min-h-12 rounded-xl border-2 border-black px-4 text-lg text-black dark:border-white dark:text-white"
-        />
-      </View>
+      <Field label="Nota" variant="text" value={note} onChangeText={setNote} maxLength={NOTE_MAX_LENGTH} fill={false} />
 
       {failed ? (
         <Text accessibilityLiveRegion="polite" className="text-base font-semibold text-red-700 dark:text-red-400">
@@ -109,30 +106,8 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
       ) : null}
 
       <View className="flex-row gap-3">
-        <Pressable
-          onPress={onDone}
-          accessibilityRole="button"
-          className="min-h-14 flex-1 items-center justify-center rounded-xl border-2 border-black dark:border-white"
-        >
-          <Text className="text-lg font-bold text-black dark:text-white">Cancelar</Text>
-        </Pressable>
-        <Pressable
-          onPress={save}
-          disabled={!canSave}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSave }}
-          className={`min-h-14 flex-1 items-center justify-center rounded-xl ${
-            canSave ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
-          }`}
-        >
-          <Text
-            className={`text-lg font-bold ${
-              canSave ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'
-            }`}
-          >
-            Salvar
-          </Text>
-        </Pressable>
+        <Button label="Cancelar" variant="secondary" size="lg" grow onPress={onDone} />
+        <Button label="Salvar" size="lg" grow onPress={save} disabled={!canSave} />
       </View>
     </View>
   );

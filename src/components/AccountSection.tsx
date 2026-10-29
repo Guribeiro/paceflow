@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { isCloudConfigured, sendLoginCode, signOut, syncNow, verifyLoginCode } from '../data/cloud';
 import type { LastSync } from '../data/sync/sync-state';
 import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
+import { Button } from './ui/Button';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,34 +18,6 @@ export function describeLastSync(last: LastSync | null, now: Date = new Date()):
   const at = new Date(last.at);
   const sameDay = at.toDateString() === now.toDateString();
   return `Última sincronização: ${sameDay ? 'hoje' : dateFormatter.format(at)} às ${timeFormatter.format(at)}.`;
-}
-
-function ActionButton({
-  label,
-  onPress,
-  disabled,
-  primary,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  primary?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      className={`min-h-12 items-center justify-center rounded-xl px-4 ${
-        primary ? 'bg-black dark:bg-white' : 'border-2 border-black dark:border-white'
-      } ${disabled ? 'opacity-50' : ''}`}
-    >
-      <Text className={`text-lg font-bold ${primary ? 'text-white dark:text-black' : 'text-black dark:text-white'}`}>
-        {label}
-      </Text>
-    </Pressable>
-  );
 }
 
 function SignInForm() {
@@ -88,11 +61,11 @@ function SignInForm() {
           error={error ?? undefined}
           fill={false}
         />
-        <ActionButton
+        <Button
           label={busy ? 'Enviando…' : 'Enviar código'}
           onPress={requestCode}
           disabled={busy || !EMAIL_PATTERN.test(trimmedEmail)}
-          primary
+          busy={busy}
         />
       </View>
     );
@@ -112,14 +85,15 @@ function SignInForm() {
         error={error ?? undefined}
         fill={false}
       />
-      <ActionButton
+      <Button
         label={busy ? 'Entrando…' : 'Entrar'}
         onPress={confirmCode}
         disabled={busy || code.length !== 6}
-        primary
+        busy={busy}
       />
-      <ActionButton
+      <Button
         label="Usar outro e-mail"
+        variant="secondary"
         onPress={() => {
           setStep('email');
           setCode('');
@@ -153,8 +127,8 @@ function SignedIn({ email }: { email: string }) {
       >
         {describeLastSync(lastSync)}
       </Text>
-      <ActionButton label={busy ? 'Sincronizando…' : 'Sincronizar agora'} onPress={sync} disabled={busy} primary />
-      <ActionButton label="Sair" onPress={() => void signOut()} disabled={busy} />
+      <Button label={busy ? 'Sincronizando…' : 'Sincronizar agora'} onPress={sync} disabled={busy} busy={busy} />
+      <Button label="Sair" variant="secondary" onPress={() => void signOut()} disabled={busy} />
     </View>
   );
 }

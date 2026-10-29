@@ -24,7 +24,7 @@ export function UnitToggle({ value, onChange }: Props) {
             accessibilityRole="radio"
             accessibilityState={{ checked: selected }}
             accessibilityLabel={option.spoken}
-            className={`min-h-12 min-w-16 items-center justify-center px-4 ${
+            className={`min-h-12 min-w-16 items-center justify-center px-4 active:opacity-70 ${
               selected ? 'bg-black dark:bg-white' : ''
             }`}
           >

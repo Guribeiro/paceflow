@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
 import {
@@ -24,10 +24,9 @@ import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
-import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS } from './workout-options';
-
-const tabular = { fontVariant: ['tabular-nums' as const] };
+import { Button } from './ui/Button';
+import { tabular } from './ui/typography';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
 
@@ -91,7 +90,6 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
 }
 
 function SeriesLogger({ unit }: { unit: DistanceUnit }) {
-  const placeholderColor = usePlaceholderColor();
   const large = useLargeText();
   const [repChoice, setRepChoice] = useState('400');
   const [otherText, setOtherText] = useState('');
@@ -178,21 +176,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
             fill={false}
           />
         </View>
-        <Pressable
-          onPress={addLap}
-          disabled={lap === null}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: lap === null }}
-          className={`min-h-14 items-center justify-center rounded-xl px-5 ${
-            lap !== null ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
-          }`}
-        >
-          <Text
-            className={`text-lg font-bold ${lap !== null ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'}`}
-          >
-            Adicionar volta
-          </Text>
-        </Pressable>
+        <Button label="Adicionar volta" size="lg" onPress={addLap} disabled={lap === null} />
       </View>
 
       {laps.length > 0 ? (
@@ -218,14 +202,12 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
                   {index + 1}. <Text className="font-bold">{formatDuration(seconds)}</Text>
                   {mark}
                 </Text>
-                <Pressable
-                  onPress={() => setLaps((current) => current.filter((_, i) => i !== index))}
-                  accessibilityRole="button"
+                <Button
+                  label="Remover"
+                  variant="danger-link"
                   accessibilityLabel={`Remover tiro ${index + 1}`}
-                  className="min-h-12 min-w-12 items-center justify-center"
-                >
-                  <Text className="text-base font-semibold text-red-700 underline dark:text-red-400">Remover</Text>
-                </Pressable>
+                  onPress={() => setLaps((current) => current.filter((_, i) => i !== index))}
+                />
               </View>
             );
           })}
@@ -253,25 +235,16 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
           />
           <ChoiceChips label="Esforço percebido (RPE, opcional)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
           <ShoePicker shoes={shoes} value={shoeId} onChange={setShoeId} />
-          <View className="gap-1">
-            <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Nota</Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              maxLength={NOTE_MAX_LENGTH}
-              placeholder={autoNote}
-              placeholderTextColor={placeholderColor}
-              accessibilityLabel="Nota"
-              className="min-h-12 rounded-xl border-2 border-black px-4 text-lg text-black dark:border-white dark:text-white"
-            />
-          </View>
-          <Pressable
-            onPress={save}
-            accessibilityRole="button"
-            className="min-h-14 items-center justify-center rounded-xl bg-black dark:bg-white"
-          >
-            <Text className="text-xl font-bold text-white dark:text-black">Salvar série no diário</Text>
-          </Pressable>
+          <Field
+            label="Nota"
+            variant="text"
+            value={note}
+            onChangeText={setNote}
+            maxLength={NOTE_MAX_LENGTH}
+            placeholder={autoNote}
+            fill={false}
+          />
+          <Button label="Salvar série no diário" size="lg" onPress={save} />
         </>
       ) : null}
 

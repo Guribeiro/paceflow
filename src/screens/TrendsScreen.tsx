@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { RaceGoalCard } from '../components/RaceGoalCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
+import { Button } from '../components/ui/Button';
+import { tabular } from '../components/ui/typography';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
@@ -14,7 +16,6 @@ import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 
 const WEEKS = 12;
-const tabular = { fontVariant: ['tabular-nums' as const] };
 
 function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
@@ -107,16 +108,12 @@ export function TrendsScreen() {
                 ) : null}
               </View>
 
-              <Pressable
+              <Button
+                label={showTable ? 'Ocultar tabela' : 'Ver como tabela'}
+                variant="link"
+                expanded={showTable}
                 onPress={() => setShowTable((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: showTable }}
-                className="min-h-12 justify-center self-start"
-              >
-                <Text className="text-base font-semibold text-black underline dark:text-white">
-                  {showTable ? 'Ocultar tabela' : 'Ver como tabela'}
-                </Text>
-              </Pressable>
+              />
 
               {showTable ? (
                 <View className="rounded-xl border-2 border-black dark:border-white">

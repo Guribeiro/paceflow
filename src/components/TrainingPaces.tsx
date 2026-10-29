@@ -9,8 +9,8 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
+import { tabular } from './ui/typography';
 
-const tabular = { fontVariant: ['tabular-nums' as const] };
 
 const ZONES: { zone: TrainingZone; label: string; hint: string; showLap?: boolean }[] = [
   { zone: 'easy', label: 'Leve / longão', hint: 'Conversa fácil; a maior parte da semana' },

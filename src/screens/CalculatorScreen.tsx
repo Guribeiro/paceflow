@@ -10,6 +10,7 @@ import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { TrainingPaces } from '../components/TrainingPaces';
 import { UnitToggle } from '../components/UnitToggle';
+import { tabular } from '../components/ui/typography';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import {
@@ -22,7 +23,6 @@ import {
   trainingPaces,
 } from '../domain/pace';
 
-const tabular = { fontVariant: ['tabular-nums' as const] };
 
 export function CalculatorScreen() {
   const [unit, setUnit] = usePreferredUnit();

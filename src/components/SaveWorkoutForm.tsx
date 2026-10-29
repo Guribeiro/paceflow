@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
@@ -8,8 +8,9 @@ import { shoeRepository } from '../data/shoes';
 import { suggestedShoeId } from '../domain/shoe-mileage';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
+import { Field } from './Field';
+import { Button } from './ui/Button';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
-import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
 interface Props {
@@ -18,7 +19,6 @@ interface Props {
 }
 
 export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
-  const placeholderColor = usePlaceholderColor();
   const [terrain, setTerrain] = useState<Terrain | undefined>();
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
@@ -75,37 +75,23 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
       />
       <ChoiceChips label="Esforço percebido (RPE, opcional)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
 
-      <View className="gap-1">
-        <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Nota (opcional)</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          maxLength={NOTE_MAX_LENGTH}
-          placeholder="Ex.: 8 × 400 m, vento contra"
-          placeholderTextColor={placeholderColor}
-          accessibilityLabel="Nota"
-          className="min-h-12 rounded-xl border-2 border-black px-4 text-lg text-black dark:border-white dark:text-white"
-        />
-      </View>
+      <Field
+        label="Nota (opcional)"
+        variant="text"
+        value={note}
+        onChangeText={setNote}
+        maxLength={NOTE_MAX_LENGTH}
+        placeholder="Ex.: 8 × 400 m, vento contra"
+        fill={false}
+      />
 
-      <Pressable
+      <Button
+        label={terrain ? 'Salvar treino' : 'Escolha o terreno'}
         onPress={save}
         disabled={!terrain}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !terrain }}
+        size="lg"
         accessibilityHint={terrain ? undefined : 'Escolha o terreno para salvar'}
-        className={`min-h-14 items-center justify-center rounded-xl ${
-          terrain ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'
-        }`}
-      >
-        <Text
-          className={`text-xl font-bold ${
-            terrain ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'
-          }`}
-        >
-          {terrain ? 'Salvar treino' : 'Escolha o terreno'}
-        </Text>
-      </Pressable>
+      />
 
       {status !== 'idle' ? (
         <Text

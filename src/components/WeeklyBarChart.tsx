@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { type DistanceUnit, distanceInUnit, formatDistance } from '../domain/pace';
 import type { WeekTotal } from '../domain/workout-trends';
 
+// Igual a h-44 (176 px): a altura das barras é calculada sobre ele.
 const CHART_HEIGHT = 176;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -33,7 +34,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
 
   return (
     <View className="gap-1">
-      <View style={{ height: CHART_HEIGHT }} className="flex-row items-end gap-0.5 border-b border-neutral-400">
+      <View className="h-44 flex-row items-end gap-0.5 border-b border-neutral-400">
         {weeks.map((week, index) => {
           const isSelected = index === selected;
           const ratio = week.distanceMeters / scaleMax;
@@ -48,11 +49,11 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
                 week.count === 1 ? 'treino' : 'treinos'
               }`}
               // Área de toque maior que a barra: a coluna inteira.
-              className="h-full flex-1 justify-end"
+              className="h-full flex-1 justify-end active:opacity-70"
             >
               <View
                 style={{ height: week.distanceMeters > 0 ? Math.max(2, ratio * CHART_HEIGHT) : 0 }}
-                className={`rounded-t ${isSelected ? 'bg-black dark:bg-white' : 'bg-[#737373] dark:bg-[#8f8f8f]'}`}
+                className={`rounded-t ${isSelected ? 'bg-black dark:bg-white' : 'bg-neutral-500 dark:bg-[#8f8f8f]'}`}
               />
             </Pressable>
           );
@@ -66,7 +67,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
             style={{ bottom: (goalMeters / scaleMax) * CHART_HEIGHT }}
             className="absolute left-0 right-0 border-t-2 border-dashed border-black dark:border-white"
           >
-            <Text className="self-end bg-white px-1 text-xs font-bold text-black dark:bg-black dark:text-white">
+            <Text className="self-end bg-white px-1 text-sm font-bold text-black dark:bg-black dark:text-white">
               Meta {formatDistance(goalMeters, unit)} {unit}
             </Text>
           </View>
@@ -75,7 +76,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
 
       <View className="flex-row justify-between" importantForAccessibility="no-hide-descendants">
         {axisIndexes.map((i) => (
-          <Text key={i} className="text-xs text-neutral-700 dark:text-neutral-300">
+          <Text key={i} className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             {i === lastIndex ? 'Esta semana' : weekLabel(weeks[i].weekStart)}
           </Text>
         ))}

@@ -28,7 +28,7 @@ export function ChoiceChips<T extends string | number>({ label, options, value, 
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               accessibilityLabel={option.spoken ?? option.label}
-              className={`min-h-12 min-w-12 items-center justify-center rounded-xl border-2 border-black px-4 dark:border-white ${
+              className={`min-h-12 min-w-12 items-center justify-center rounded-xl border-2 border-black px-4 active:opacity-70 dark:border-white ${
                 selected ? 'bg-black dark:bg-white' : ''
               }`}
             >

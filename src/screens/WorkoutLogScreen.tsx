@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, Text, View } from 'react-native';
+import { Alert, FlatList, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { BackupSection } from '../components/BackupSection';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
+import { Button } from '../components/ui/Button';
+import { tabular } from '../components/ui/typography';
 import { workoutRepository } from '../data/workouts';
 import {
   type DistanceUnit,
@@ -22,8 +24,6 @@ import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useShoes } from '../hooks/useShoes';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
-
-const tabular = { fontVariant: ['tabular-nums' as const] };
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'short',
@@ -104,22 +104,13 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
         <>
           <WorkoutDetails workout={workout} unit={unit} shoeName={shoeName} />
           <View className="flex-row flex-wrap justify-end gap-2">
-            <Pressable
-              onPress={() => setEditing(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Editar treino"
-              className="min-h-12 items-center justify-center px-3"
-            >
-              <Text className="text-base font-semibold text-black underline dark:text-white">Editar</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => confirmRemove(workout, unit)}
-              accessibilityRole="button"
+            <Button label="Editar" variant="link" accessibilityLabel="Editar treino" onPress={() => setEditing(true)} />
+            <Button
+              label="Excluir"
+              variant="danger-link"
               accessibilityLabel="Excluir treino"
-              className="min-h-12 items-center justify-center px-3"
-            >
-              <Text className="text-base font-semibold text-red-700 underline dark:text-red-400">Excluir</Text>
-            </Pressable>
+              onPress={() => confirmRemove(workout, unit)}
+            />
           </View>
         </>
       )}

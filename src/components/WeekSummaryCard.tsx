@@ -4,8 +4,8 @@ import { type DistanceUnit, distanceInUnit, formatDistance, formatDuration, spok
 import { goalProgress } from '../domain/weekly-goal';
 import type { WeekSummary } from '../domain/workout-summary';
 import { BIG_NUMBER_MAX_SCALE } from '../hooks/useLargeText';
-
-const tabular = { fontVariant: ['tabular-nums' as const] };
+import { ProgressBar } from './ui/ProgressBar';
+import { tabular } from './ui/typography';
 
 interface Props {
   summary: WeekSummary;
@@ -58,10 +58,7 @@ function GoalProgress({ distanceMeters, goalMeters, unit }: { distanceMeters: nu
       accessibilityLabel={`Meta semanal: ${text}`}
       accessibilityValue={{ min: 0, max: 100, now: Math.min(100, progress.percent) }}
     >
-      {/* Trilho em cinza e preenchimento invertido em relação ao card. */}
-      <View className="h-3 overflow-hidden rounded-full bg-neutral-600 dark:bg-neutral-300">
-        <View style={{ width: `${progress.ratio * 100}%` }} className="h-full rounded-full bg-white dark:bg-black" />
-      </View>
+      <ProgressBar ratio={progress.ratio} inverted />
       <Text className="text-base font-semibold text-neutral-200 dark:text-neutral-800" style={tabular}>
         {text}
       </Text>

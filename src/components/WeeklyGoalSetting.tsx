@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKilometers } from '../domain/pace';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { Field } from './Field';
+import { Button } from './ui/Button';
 
 /** Meta semanal digitada na unidade preferida e guardada em metros. */
 export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
@@ -38,27 +39,10 @@ export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
             fill={false}
           />
         </View>
-        <Pressable
-          onPress={save}
-          disabled={!valid}
-          accessibilityRole="button"
-          accessibilityLabel="Salvar meta"
-          accessibilityState={{ disabled: !valid }}
-          className={`min-h-14 justify-center rounded-xl px-5 ${valid ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'}`}
-        >
-          <Text className={`text-lg font-bold ${valid ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'}`}>
-            Salvar
-          </Text>
-        </Pressable>
+        <Button label="Salvar" accessibilityLabel="Salvar meta" size="lg" onPress={save} disabled={!valid} />
       </View>
       {goalMeters ? (
-        <Pressable
-          onPress={() => setGoalMeters(null)}
-          accessibilityRole="button"
-          className="min-h-12 justify-center self-start"
-        >
-          <Text className="text-base font-semibold text-black underline dark:text-white">Remover meta</Text>
-        </Pressable>
+        <Button label="Remover meta" variant="link" onPress={() => setGoalMeters(null)} />
       ) : null}
     </View>
   );

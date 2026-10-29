@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import {
   type DistanceUnit,
@@ -17,8 +17,9 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
 import { TrainingPaces } from './TrainingPaces';
+import { Button } from './ui/Button';
+import { tabular } from './ui/typography';
 
-const tabular = { fontVariant: ['tabular-nums' as const] };
 const OTHER = 'other';
 
 const DISTANCE_OPTIONS = [
@@ -38,28 +39,6 @@ function weeksFromNow(weeks: number): string {
   const d = new Date();
   d.setDate(d.getDate() + weeks * 7);
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
-
-function Button({ label, onPress, primary, disabled }: { label: string; onPress: () => void; primary?: boolean; disabled?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      className={`min-h-12 flex-1 items-center justify-center rounded-xl px-4 ${
-        primary ? (disabled ? 'bg-neutral-300 dark:bg-neutral-700' : 'bg-black dark:bg-white') : 'border-2 border-black dark:border-white'
-      }`}
-    >
-      <Text
-        className={`text-lg font-bold ${
-          primary ? (disabled ? 'text-neutral-700 dark:text-neutral-300' : 'text-white dark:text-black') : 'text-black dark:text-white'
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 }
 
 function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null; onSave: (g: RaceGoal) => void; onCancel: () => void }) {
@@ -109,10 +88,10 @@ function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null;
         fill={false}
       />
       <View className="flex-row flex-wrap gap-3">
-        <Button label="Cancelar" onPress={onCancel} />
+        <Button label="Cancelar" variant="secondary" grow onPress={onCancel} />
         <Button
           label="Salvar prova"
-          primary
+          grow
           disabled={!canSave}
           onPress={() =>
             canSave &&
@@ -159,7 +138,7 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
         <Text className="text-base text-neutral-700 dark:text-neutral-300">
           Defina uma prova para ver a contagem regressiva, o pace-alvo e quanto falta pela sua forma atual.
         </Text>
-        <Button label="Definir prova-alvo" primary onPress={() => setEditing(true)} />
+        <Button label="Definir prova-alvo" onPress={() => setEditing(true)} />
       </View>
     );
   }
@@ -218,8 +197,8 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
       ) : null}
 
       <View className="flex-row flex-wrap gap-3">
-        <Button label="Editar" onPress={() => setEditing(true)} />
-        <Button label="Remover" onPress={() => setGoal(null)} />
+        <Button label="Editar" variant="secondary" grow onPress={() => setEditing(true)} />
+        <Button label="Remover" variant="secondary" grow onPress={() => setGoal(null)} />
       </View>
     </View>
   );

@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { type DistanceUnit, KM_PER_MILE, type PaceRange, formatDistance, formatDuration } from '../domain/pace';
 import { type PlanPhase, type TrainingPlanWeek, buildTrainingPlan, planProgress } from '../domain/training-plan';
 import { useRaceGoal } from '../hooks/useRaceGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { ProgressBar } from './ui/ProgressBar';
+import { SectionHeader } from './ui/SectionHeader';
+import { tabular } from './ui/typography';
 
-const tabular = { fontVariant: ['tabular-nums' as const] };
 const UPCOMING = 4;
 
 const PHASE_LABEL: Record<PlanPhase, string> = {
@@ -33,7 +37,7 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
   const done = `${formatDistance(progress.doneMeters, unit)} de ${formatDistance(week.targetMeters, unit)} ${unit}`;
 
   return (
-    <View className="gap-3 rounded-xl bg-black p-4 dark:bg-white">
+    <Card variant="inverted">
       <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">
         Esta semana · {PHASE_LABEL[week.phase]}
         {week.isCutback ? ' (alívio)' : ''}
@@ -48,9 +52,7 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
         <Text className="text-2xl font-bold text-white dark:text-black" style={tabular}>
           {done}
         </Text>
-        <View className="h-3 overflow-hidden rounded-full bg-neutral-600 dark:bg-neutral-300">
-          <View style={{ width: `${ratio * 100}%` }} className="h-full rounded-full bg-white dark:bg-black" />
-        </View>
+        <ProgressBar ratio={ratio} inverted />
       </View>
       {week.sessions.map((session) => {
         const isDone = session.kind === 'long' && progress.longRunDone;
@@ -74,7 +76,7 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
         );
       })}
       <Text className="text-sm text-neutral-300 dark:text-neutral-700">Nos outros dias, corridas leves ou descanso.</Text>
-    </View>
+    </Card>
   );
 }
 
@@ -91,9 +93,7 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
 
   return (
     <View className="gap-3">
-      <Text className="text-2xl font-bold text-black dark:text-white" accessibilityRole="header">
-        Plano até a prova
-      </Text>
+      <SectionHeader>Plano até a prova</SectionHeader>
       {plan.shortNotice ? (
         <Text className="text-base font-semibold text-black dark:text-white">
           Pouco tempo até a prova: o foco agora é chegar descansado.
@@ -128,16 +128,12 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
       ) : null}
 
       {next.length > UPCOMING ? (
-        <Pressable
+        <Button
+          label={showAll ? 'Mostrar menos' : `Ver todas as ${next.length} semanas`}
+          variant="link"
+          expanded={showAll}
           onPress={() => setShowAll((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showAll }}
-          className="min-h-12 justify-center self-start"
-        >
-          <Text className="text-base font-semibold text-black underline dark:text-white">
-            {showAll ? 'Mostrar menos' : `Ver todas as ${next.length} semanas`}
-          </Text>
-        </Pressable>
+        />
       ) : null}
 
       <Text className="text-sm text-neutral-700 dark:text-neutral-300">

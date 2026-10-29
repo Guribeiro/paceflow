@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { exportWorkouts } from '../data/export/export-workouts';
 import { type ImportOutcome, importWorkoutsFromFile } from '../data/import/import-workouts';
 import type { ExportFormat } from '../domain/export';
 import { useLargeText } from '../hooks/useLargeText';
+import { Button } from './ui/Button';
 
 type Action = ExportFormat | 'import';
 
@@ -68,18 +69,17 @@ export function BackupSection({ canExport }: Props) {
   }
 
   const button = (action: Action, label: string, accessibilityLabel: string, hint: string) => (
-    <Pressable
+    <Button
       key={action}
+      label={busy === action ? 'Aguarde…' : label}
+      variant="secondary"
+      grow={!large}
       onPress={() => run(action)}
       disabled={busy !== null}
-      accessibilityRole="button"
+      busy={busy === action}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={hint}
-      accessibilityState={{ disabled: busy !== null, busy: busy === action }}
-      className={`min-h-12 ${large ? '' : 'flex-1'} items-center justify-center rounded-xl border-2 border-black px-3 dark:border-white`}
-    >
-      <Text className="text-lg font-bold text-black dark:text-white">{busy === action ? 'Aguarde…' : label}</Text>
-    </Pressable>
+    />
   );
 
   return (

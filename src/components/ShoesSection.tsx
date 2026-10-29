@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Platform, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Text, View } from 'react-native';
 
 import { shoeRepository } from '../data/shoes';
 import { type DistanceUnit, distanceInUnit, formatDistance, parseDistance, toKilometers } from '../domain/pace';
@@ -8,6 +8,8 @@ import { type ShoeStatus, shoeMileage, shoeStatus } from '../domain/shoe-mileage
 import { useShoes } from '../hooks/useShoes';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Field } from './Field';
+import { Button } from './ui/Button';
+import { ProgressBar } from './ui/ProgressBar';
 
 const STATUS_LABEL: Record<ShoeStatus, string> = {
   ok: '',
@@ -25,18 +27,6 @@ function confirmRemove(shoe: Shoe) {
     { text: 'Cancelar', style: 'cancel' },
     { text: 'Excluir', style: 'destructive', onPress: () => shoeRepository.remove(shoe.id) },
   ]);
-}
-
-function LinkButton({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" className="min-h-12 justify-center px-2">
-      <Text
-        className={`text-base font-semibold underline ${danger ? 'text-red-700 dark:text-red-400' : 'text-black dark:text-white'}`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 }
 
 function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: DistanceUnit }) {
@@ -67,17 +57,16 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
             </Text>
           ) : null}
         </View>
-        <View className="h-3 overflow-hidden rounded-full bg-neutral-300 dark:bg-neutral-700">
-          <View style={{ width: `${ratio * 100}%` }} className="h-full rounded-full bg-black dark:bg-white" />
-        </View>
+        <ProgressBar ratio={ratio} />
         <Text className="text-base text-neutral-700 dark:text-neutral-300">{summary}</Text>
       </View>
       <View className="flex-row flex-wrap justify-end gap-2">
-        <LinkButton
+        <Button
           label={retired ? 'Reativar' : 'Aposentar'}
+          variant="link"
           onPress={() => shoeRepository.update(shoe.id, { retired: !retired })}
         />
-        <LinkButton label="Excluir" danger onPress={() => confirmRemove(shoe)} />
+        <Button label="Excluir" variant="danger-link" onPress={() => confirmRemove(shoe)} />
       </View>
     </View>
   );
@@ -125,25 +114,8 @@ function AddShoeForm({ unit, onDone }: { unit: DistanceUnit; onDone: () => void 
         fill={false}
       />
       <View className="flex-row flex-wrap gap-3">
-        <Pressable
-          onPress={onDone}
-          accessibilityRole="button"
-          className="min-h-12 flex-1 items-center justify-center rounded-xl border-2 border-black px-4 dark:border-white"
-        >
-          <Text className="text-lg font-bold text-black dark:text-white">Cancelar</Text>
-        </Pressable>
-        <Pressable
-          onPress={save}
-          disabled={!canSave}
-          accessibilityRole="button"
-          accessibilityLabel="Salvar tênis"
-          accessibilityState={{ disabled: !canSave }}
-          className={`min-h-12 flex-1 items-center justify-center rounded-xl px-4 ${canSave ? 'bg-black dark:bg-white' : 'bg-neutral-300 dark:bg-neutral-700'}`}
-        >
-          <Text className={`text-lg font-bold ${canSave ? 'text-white dark:text-black' : 'text-neutral-700 dark:text-neutral-300'}`}>
-            Salvar
-          </Text>
-        </Pressable>
+        <Button label="Cancelar" variant="secondary" grow onPress={onDone} />
+        <Button label="Salvar" accessibilityLabel="Salvar tênis" grow onPress={save} disabled={!canSave} />
       </View>
     </View>
   );
@@ -171,9 +143,7 @@ export function ShoesSection({ unit }: { unit: DistanceUnit }) {
       {adding ? (
         <AddShoeForm unit={unit} onDone={() => setAdding(false)} />
       ) : (
-        <Pressable onPress={() => setAdding(true)} accessibilityRole="button" className="min-h-12 justify-center self-start">
-          <Text className="text-base font-semibold text-black underline dark:text-white">Adicionar tênis</Text>
-        </Pressable>
+        <Button label="Adicionar tênis" variant="link" onPress={() => setAdding(true)} />
       )}
     </View>
   );
