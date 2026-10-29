@@ -59,7 +59,8 @@ const CUTBACK = 0.8;
 const PEAK_OVER_START = 1.5;
 const LONG_SHARE = 0.28;
 
-const raceName = (km: number) =>
+/** "10 km", "Meia Maratona"… ou a distância crua quando não é uma prova padrão. */
+export const raceName = (km: number) =>
   RACE_DISTANCES.find((r) => Math.abs(r.distanceKm - km) < 1e-6)?.label ?? `${String(km).replace('.', ',')} km`;
 
 const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);

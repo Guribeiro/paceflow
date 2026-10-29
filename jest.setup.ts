@@ -19,3 +19,28 @@ jest.mock('expo-crypto', () => ({
   ...jest.requireActual('expo-crypto'),
   randomUUID: () => globalThis.crypto.randomUUID(),
 }));
+
+// Notificações locais em memória: os testes conferem o que ficou agendado
+// pelo próprio getAllScheduledNotificationsAsync.
+jest.mock('expo-notifications', () => {
+  const scheduled = new Map<string, { identifier: string; content: unknown; trigger: unknown }>();
+  return {
+    AndroidImportance: { DEFAULT: 3 },
+    SchedulableTriggerInputTypes: { DATE: 'date' },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(() => Promise.resolve(null)),
+    getPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true, canAskAgain: true, status: 'granted' })),
+    requestPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true, canAskAgain: true, status: 'granted' })),
+    getAllScheduledNotificationsAsync: jest.fn(() => Promise.resolve([...scheduled.values()])),
+    scheduleNotificationAsync: jest.fn(
+      (request: { identifier: string; content: unknown; trigger: unknown }) => {
+        scheduled.set(request.identifier, request);
+        return Promise.resolve(request.identifier);
+      },
+    ),
+    cancelScheduledNotificationAsync: jest.fn((identifier: string) => {
+      scheduled.delete(identifier);
+      return Promise.resolve();
+    }),
+  };
+});

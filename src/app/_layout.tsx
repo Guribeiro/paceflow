@@ -5,12 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useApplyTheme } from '../hooks/useApplyTheme';
 import { useAutoSync } from '../hooks/useAutoSync';
+import { useReminderSync } from '../hooks/useReminderSync';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 
 export default function RootLayout() {
   useApplyTheme();
   useWidgetSync();
   useAutoSync();
+  useReminderSync();
   const { colorScheme } = useColorScheme();
   const dark = colorScheme === 'dark';
   // Cores do tema em vez do roxo padrão do Material 3: indicador invertido e

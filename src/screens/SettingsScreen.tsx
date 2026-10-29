@@ -3,6 +3,7 @@ import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
+import { RemindersSection } from '../components/RemindersSection';
 import { AccountSection } from '../components/AccountSection';
 import { BackupSection } from '../components/BackupSection';
 import { ChoiceChips } from '../components/ChoiceChips';
@@ -43,6 +44,7 @@ export function SettingsScreen() {
           <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
           <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
           <WeeklyGoalSetting unit={unit} />
+          <RemindersSection />
           <ShoesSection unit={unit} />
           <BackupSection canExport={workouts.length > 0} />
 
