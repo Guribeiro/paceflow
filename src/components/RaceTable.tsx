@@ -16,7 +16,7 @@ export function RaceTable({ races }: Props) {
           accessibilityLabel={`${race.label}: ${spokenDuration(race.durationSeconds)}, pace de ${spokenDuration(
             race.secondsPerKm,
           )} por quilômetro`}
-          className={`flex-row items-center justify-between px-4 py-3 ${
+          className={`flex-row flex-wrap items-center justify-between gap-x-4 px-4 py-3 ${
             index > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
           }`}
         >

@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { exportWorkouts } from '../data/export/export-workouts';
 import { type ImportOutcome, importWorkoutsFromFile } from '../data/import/import-workouts';
 import type { ExportFormat } from '../domain/export';
+import { useLargeText } from '../hooks/useLargeText';
 
 type Action = ExportFormat | 'import';
 
@@ -43,6 +44,7 @@ interface Props {
 export function BackupSection({ canExport }: Props) {
   const [busy, setBusy] = useState<Action | null>(null);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const large = useLargeText();
 
   async function run(action: Action) {
     setBusy(action);
@@ -73,7 +75,7 @@ export function BackupSection({ canExport }: Props) {
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={hint}
       accessibilityState={{ disabled: busy !== null, busy: busy === action }}
-      className="min-h-12 flex-1 items-center justify-center rounded-xl border-2 border-black dark:border-white"
+      className={`min-h-12 ${large ? '' : 'flex-1'} items-center justify-center rounded-xl border-2 border-black px-3 dark:border-white`}
     >
       <Text className="text-lg font-bold text-black dark:text-white">{busy === action ? 'Aguarde…' : label}</Text>
     </Pressable>
@@ -82,7 +84,7 @@ export function BackupSection({ canExport }: Props) {
   return (
     <View className="gap-2">
       <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Backup</Text>
-      <View className="flex-row gap-3">
+      <View className={`${large ? 'flex-col' : 'flex-row'} gap-3`}>
         {canExport
           ? FORMATS.map(({ format, label, hint }) => button(format, label, `Exportar ${label}`, hint))
           : null}

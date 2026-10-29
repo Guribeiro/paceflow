@@ -6,6 +6,7 @@ import { Field } from '../components/Field';
 import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { UnitToggle } from '../components/UnitToggle';
+import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import {
   calculatePace,
@@ -20,6 +21,10 @@ const tabular = { fontVariant: ['tabular-nums' as const] };
 
 export function CalculatorScreen() {
   const [unit, setUnit] = usePreferredUnit();
+  // Com fonte grande, o que fica lado a lado passa a empilhar.
+  const large = useLargeText();
+  const row = large ? 'flex-col' : 'flex-row';
+  const cell = large ? '' : 'flex-1';
   const [distanceText, setDistanceText] = useState('');
   const [durationText, setDurationText] = useState('');
 
@@ -49,14 +54,14 @@ export function CalculatorScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-black">
       <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
-        <View className="flex-row items-center justify-between">
+        <View className={`${large ? 'flex-col items-start gap-3' : 'flex-row items-center justify-between'}`}>
           <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
             Calculadora
           </Text>
           <UnitToggle value={unit} onChange={setUnit} />
         </View>
 
-        <View className="flex-row gap-3">
+        <View className={`${row} gap-3`} testID="calculator-fields">
           <Field
             label={`Distância (${unit})`}
             value={distanceText}
@@ -64,6 +69,7 @@ export function CalculatorScreen() {
             placeholder="5"
             keyboardType="decimal-pad"
             error={distanceError}
+            fill={!large}
           />
           <Field
             label="Tempo"
@@ -72,12 +78,13 @@ export function CalculatorScreen() {
             placeholder="25:00"
             keyboardType="numbers-and-punctuation"
             error={durationError}
+            fill={!large}
           />
         </View>
 
-        <View className="flex-row gap-3">
+        <View className={`${row} gap-3`} testID="calculator-results">
           <View
-            className="flex-1 rounded-xl bg-black p-4 dark:bg-white"
+            className={`${cell} rounded-xl bg-black p-4 dark:bg-white`}
             accessible
             accessibilityLabel={
               mainPace !== undefined
@@ -86,13 +93,17 @@ export function CalculatorScreen() {
             }
           >
             <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Pace</Text>
-            <Text className="text-5xl font-bold text-white dark:text-black" style={tabular}>
+            <Text
+              className="text-5xl font-bold text-white dark:text-black"
+              style={tabular}
+              maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
+            >
               {mainPace !== undefined ? formatDuration(mainPace) : '--:--'}
             </Text>
             <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">min/{unit}</Text>
           </View>
           <View
-            className="flex-1 rounded-xl border-2 border-black p-4 dark:border-white"
+            className={`${cell} rounded-xl border-2 border-black p-4 dark:border-white`}
             accessible
             accessibilityLabel={
               mainSpeed !== undefined
@@ -101,7 +112,11 @@ export function CalculatorScreen() {
             }
           >
             <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">Velocidade</Text>
-            <Text className="text-5xl font-bold text-black dark:text-white" style={tabular}>
+            <Text
+              className="text-5xl font-bold text-black dark:text-white"
+              style={tabular}
+              maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
+            >
               {mainSpeed !== undefined ? mainSpeed.toFixed(1).replace('.', ',') : '--'}
             </Text>
             <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{speedUnit}</Text>

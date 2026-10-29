@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 
 import { type DistanceUnit, distanceInUnit, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
 import type { WeekSummary } from '../domain/workout-summary';
+import { BIG_NUMBER_MAX_SCALE } from '../hooks/useLargeText';
 
 const tabular = { fontVariant: ['tabular-nums' as const] };
 
@@ -24,7 +25,11 @@ export function WeekSummaryCard({ summary, unit }: Props) {
         .replace('.', ',')} ${spokenUnit}, ${summary.count} ${treinos}, ${spokenDuration(summary.durationSeconds)}`}
     >
       <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Esta semana</Text>
-      <Text className="text-5xl font-bold text-white dark:text-black" style={tabular}>
+      <Text
+        className="text-5xl font-bold text-white dark:text-black"
+        style={tabular}
+        maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
+      >
         {distance}
         <Text className="text-2xl"> {unit}</Text>
       </Text>

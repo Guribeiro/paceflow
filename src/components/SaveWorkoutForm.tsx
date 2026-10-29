@@ -4,6 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
 import { ChoiceChips } from './ChoiceChips';
+import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
+  const placeholderColor = usePlaceholderColor();
   const [terrain, setTerrain] = useState<Terrain | undefined>();
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
@@ -60,7 +62,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
           onChangeText={setNote}
           maxLength={NOTE_MAX_LENGTH}
           placeholder="Ex.: 8 × 400 m, vento contra"
-          placeholderTextColor="#737373"
+          placeholderTextColor={placeholderColor}
           accessibilityLabel="Nota"
           className="min-h-12 rounded-xl border-2 border-black px-4 text-lg text-black dark:border-white dark:text-white"
         />

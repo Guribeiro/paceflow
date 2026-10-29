@@ -65,14 +65,14 @@ function WorkoutDetails({ workout, unit }: { workout: Workout; unit: DistanceUni
         .join(', ')}
       className="gap-2"
     >
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row flex-wrap items-center justify-between gap-x-4">
         <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{date}</Text>
         <Text className="text-base font-bold text-black dark:text-white">
           {TERRAIN_LABELS[workout.terrain]}
           {workout.rpe !== undefined ? ` · RPE ${workout.rpe}` : ''}
         </Text>
       </View>
-      <View className="flex-row items-end justify-between">
+      <View className="flex-row flex-wrap items-end justify-between gap-x-4">
         <Text className="text-3xl font-bold text-black dark:text-white" style={tabular}>
           {formatDuration(pace)}
           <Text className="text-lg font-semibold">/{unit}</Text>
@@ -96,7 +96,7 @@ function WorkoutItem({ workout, unit }: { workout: Workout; unit: DistanceUnit }
       ) : (
         <>
           <WorkoutDetails workout={workout} unit={unit} />
-          <View className="flex-row justify-end gap-2">
+          <View className="flex-row flex-wrap justify-end gap-2">
             <Pressable
               onPress={() => setEditing(true)}
               accessibilityRole="button"
