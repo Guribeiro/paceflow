@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { hasPendingChanges, isCloudConfigured, subscribeToAccount, syncNow } from '../data/cloud';
+import { preferencesRepository } from '../data/preferences';
 import { shoeRepository } from '../data/shoes';
 import { workoutRepository } from '../data/workouts';
 
@@ -39,6 +40,8 @@ export function useAutoSync() {
     };
     const unsubscribeRepo = workoutRepository.subscribe(scheduleIfPending);
     const unsubscribeShoes = shoeRepository.subscribe(scheduleIfPending);
+    // O tema também notifica, mas não marca pendência: não dispara sync.
+    const unsubscribePrefs = preferencesRepository.subscribe(scheduleIfPending);
 
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') run();
@@ -49,6 +52,7 @@ export function useAutoSync() {
       unsubscribeAccount();
       unsubscribeRepo();
       unsubscribeShoes();
+      unsubscribePrefs();
       appState.remove();
     };
   }, []);

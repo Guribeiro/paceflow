@@ -1,10 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { SyncedPreferences } from '../../domain/preferences';
 import type { Shoe } from '../../domain/shoe';
 import type { Workout } from '../../domain/workout';
 import type { Database } from './database.types';
 import type { Remote, SyncRemote } from './sync-engine';
-import { fromShoeRow, fromWorkoutRow, toShoeRow, toWorkoutRow } from './supabase-mapping';
+import {
+  fromPreferencesRow,
+  fromShoeRow,
+  fromWorkoutRow,
+  toPreferencesRow,
+  toShoeRow,
+  toWorkoutRow,
+} from './supabase-mapping';
 
 // O PostgREST limita linhas por resposta; o pull pagina por server_updated_at.
 const PAGE_SIZE = 1000;
@@ -60,5 +68,17 @@ export function createShoesRemote(client: Client): SyncRemote<Shoe> {
       return after ? query.gt('server_updated_at', after) : query;
     },
     fromRow: fromShoeRow,
+  });
+}
+
+export function createPreferencesRemote(client: Client): SyncRemote<SyncedPreferences> {
+  return createRemote({
+    upsert: (records) =>
+      client.from('preferences').upsert(records.map(toPreferencesRow), { onConflict: 'user_id,id' }),
+    page: (after) => {
+      const query = client.from('preferences').select('*').order('server_updated_at').limit(PAGE_SIZE);
+      return after ? query.gt('server_updated_at', after) : query;
+    },
+    fromRow: fromPreferencesRow,
   });
 }

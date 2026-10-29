@@ -1,10 +1,12 @@
+import { parsePreferencesRecord } from '../domain/preferences';
 import { parseShoeRecord } from '../domain/shoe';
+import { preferencesRepository } from './preferences';
 import { parseWorkoutRecord } from '../domain/workout';
 import { shoeRepository } from './shoes';
-import { shoeSyncState, syncState } from './sync';
+import { prefsSyncState, shoeSyncState, syncState } from './sync';
 import { createSyncEngine, type SyncResult } from './sync/sync-engine';
 import { supabase } from './sync/supabase-client';
-import { createShoesRemote, createWorkoutsRemote } from './sync/supabase-remote';
+import { createPreferencesRemote, createShoesRemote, createWorkoutsRemote } from './sync/supabase-remote';
 import { workoutRepository } from './workouts';
 
 /** Ponto único da conta e do backup na nuvem para a interface. */
@@ -13,6 +15,12 @@ export const isCloudConfigured = supabase !== null;
 
 const engines = supabase
   ? {
+      preferences: createSyncEngine({
+        repo: preferencesRepository,
+        remote: createPreferencesRemote(supabase),
+        state: prefsSyncState,
+        parse: parsePreferencesRecord,
+      }),
       shoes: createSyncEngine({
         repo: shoeRepository,
         remote: createShoesRemote(supabase),
@@ -29,26 +37,30 @@ const engines = supabase
   : null;
 
 /**
- * Tênis primeiro, para que os shoeId dos treinos que chegam já tenham dono.
- * O estado dos treinos é o que a tela de Ajustes mostra; uma falha nos tênis
+ * Preferências, tênis e depois treinos (os shoeId que chegam já têm dono). O
+ * estado dos treinos é o que a tela de Ajustes mostra; uma falha antes dele
  * também é registrada nele.
  */
 export async function syncNow(): Promise<SyncResult> {
   if (!engines) return { ok: false, error: 'Sync não configurado' };
-  const shoes = await engines.shoes.sync();
-  if (!shoes.ok) {
-    syncState.setLastSync({ at: new Date().toISOString(), error: shoes.error });
-    return shoes;
+  let pushed = 0;
+  let pulled = 0;
+  for (const engine of [engines.preferences, engines.shoes]) {
+    const result = await engine.sync();
+    if (!result.ok) {
+      syncState.setLastSync({ at: new Date().toISOString(), error: result.error });
+      return result;
+    }
+    pushed += result.pushed;
+    pulled += result.pulled;
   }
   const workouts = await engines.workouts.sync();
-  return workouts.ok
-    ? { ...workouts, pushed: workouts.pushed + shoes.pushed, pulled: workouts.pulled + shoes.pulled }
-    : workouts;
+  return workouts.ok ? { ...workouts, pushed: workouts.pushed + pushed, pulled: workouts.pulled + pulled } : workouts;
 }
 
 /** Há alterações locais esperando envio (treinos ou tênis)? */
 export function hasPendingChanges(): boolean {
-  return syncState.getDirty().length > 0 || shoeSyncState.getDirty().length > 0;
+  return [syncState, shoeSyncState, prefsSyncState].some((state) => state.getDirty().length > 0);
 }
 
 export async function sendLoginCode(email: string): Promise<{ ok: boolean; error?: string }> {
@@ -69,6 +81,7 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   syncState.reset();
   shoeSyncState.reset();
+  prefsSyncState.reset();
 }
 
 /** E-mail da sessão atual (null sem login) e aviso de mudanças. */

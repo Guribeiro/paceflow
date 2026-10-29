@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "shoes": {
+            "preferences": {
+                  Row: {
+                    "created_at": string,"deleted_at": string | null,"id": string,"race_goal": Json | null,"server_updated_at": string,"unit": string,"updated_at": string,"user_id": string,"weekly_goal_meters": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at": string,"deleted_at"?: string | null,"id": string,"race_goal"?: Json | null,"server_updated_at"?: string,"unit": string,"updated_at": string,"user_id"?: string,"weekly_goal_meters"?: number | null
+                  }
+                  Update: {
+                    "created_at"?: string,"deleted_at"?: string | null,"id"?: string,"race_goal"?: Json | null,"server_updated_at"?: string,"unit"?: string,"updated_at"?: string,"user_id"?: string,"weekly_goal_meters"?: number | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"shoes": {
                   Row: {
                     "created_at": string,"deleted_at": string | null,"id": string,"initial_meters": number,"limit_meters": number,"name": string,"retired_at": string | null,"server_updated_at": string,"updated_at": string,"user_id": string
                   }

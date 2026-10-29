@@ -1,3 +1,4 @@
+import { PREFERENCES_ID, type SyncedPreferences } from '../../domain/preferences';
 import type { Shoe } from '../../domain/shoe';
 import type { Terrain, Workout } from '../../domain/workout';
 import type { Database } from './database.types';
@@ -8,6 +9,8 @@ export type WorkoutRow = Tables['workouts']['Row'];
 export type WorkoutInsert = Tables['workouts']['Insert'];
 export type ShoeRow = Tables['shoes']['Row'];
 export type ShoeInsert = Tables['shoes']['Insert'];
+export type PreferencesRow = Tables['preferences']['Row'];
+export type PreferencesInsert = Tables['preferences']['Insert'];
 
 /**
  * O Postgres devolve microssegundos e offset ("…00.123456+00:00"); o app grava
@@ -79,5 +82,31 @@ export function toShoeRow(shoe: Shoe): ShoeInsert {
     created_at: shoe.createdAt,
     updated_at: shoe.updatedAt,
     deleted_at: shoe.deletedAt,
+  };
+}
+
+export function fromPreferencesRow(row: PreferencesRow): Remote<SyncedPreferences> {
+  return {
+    id: PREFERENCES_ID,
+    unit: row.unit === 'mi' ? 'mi' : 'km',
+    weeklyGoalMeters: row.weekly_goal_meters,
+    // O motor valida de novo com parsePreferencesRecord; aqui só repassa.
+    raceGoal: row.race_goal as unknown as SyncedPreferences['raceGoal'],
+    createdAt: normalizeTimestamp(row.created_at),
+    updatedAt: normalizeTimestamp(row.updated_at),
+    deletedAt: null,
+    serverUpdatedAt: normalizeTimestamp(row.server_updated_at),
+  };
+}
+
+export function toPreferencesRow(prefs: SyncedPreferences): PreferencesInsert {
+  return {
+    id: PREFERENCES_ID,
+    unit: prefs.unit,
+    weekly_goal_meters: prefs.weeklyGoalMeters,
+    race_goal: prefs.raceGoal as unknown as PreferencesInsert['race_goal'],
+    created_at: prefs.createdAt,
+    updated_at: prefs.updatedAt,
+    deleted_at: null,
   };
 }
