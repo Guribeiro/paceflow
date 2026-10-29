@@ -11,12 +11,9 @@ import {
 } from '../../domain/workout';
 import type { KeyValueStorage } from '../storage/key-value';
 
-// Cada treino fica numa chave própria e um índice guarda os ids, para que salvar
-// um treino não reserialize o histórico inteiro. O "v1" no prefixo é a versão do
-// schema: uma migração futura lê v1 e grava v2.
-const PREFIX = 'workouts:v1:';
-const INDEX_KEY = `${PREFIX}index`;
-const recordKey = (id: string) => `${PREFIX}${id}`;
+import { type ImportOptions, type ImportSummary, createRecordStore } from './record-store';
+
+export type { ImportOptions, ImportSummary } from './record-store';
 
 export type NewWorkout = Pick<Workout, 'date' | 'distanceMeters' | 'durationSeconds' | 'terrain' | 'rpe' | 'note'>;
 
@@ -52,17 +49,6 @@ export interface WorkoutRepository {
    */
   importWorkouts(workouts: readonly Workout[], options?: ImportOptions): ImportSummary;
   subscribe(listener: () => void): () => void;
-}
-
-export interface ImportSummary {
-  added: number;
-  updated: number;
-  unchanged: number;
-}
-
-export interface ImportOptions {
-  /** 'remote' = veio do servidor: não conta como alteração local a enviar. */
-  origin?: 'file' | 'remote';
 }
 
 export interface RepositoryDeps {
@@ -101,66 +87,23 @@ function toRecord(
   };
 }
 
-function parseWorkout(raw: string | undefined): Workout | null {
-  if (raw === undefined) return null;
-  try {
-    return parseWorkoutRecord(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
 export function createWorkoutRepository(
   storage: KeyValueStorage,
   { generateId = randomUUID, now = () => new Date().toISOString(), onLocalChange }: RepositoryDeps = {},
 ): WorkoutRepository {
-  const listeners = new Set<() => void>();
-  let cachedAll: Workout[] | null = null;
-  let cachedActive: Workout[] | null = null;
-
-  function readIndex(): string[] {
-    try {
-      const parsed: unknown = JSON.parse(storage.getString(INDEX_KEY) ?? '[]');
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function listAll(): Workout[] {
-    if (!cachedAll) {
-      cachedAll = readIndex()
-        .map((id) => parseWorkout(storage.getString(recordKey(id))))
-        .filter((w): w is Workout => w !== null)
-        .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-    }
-    return cachedAll;
-  }
-
-  function list(): Workout[] {
-    if (!cachedActive) cachedActive = listAll().filter((w) => w.deletedAt === null);
-    return cachedActive;
-  }
-
-  function changed(localIds: string[] = []) {
-    cachedAll = null;
-    cachedActive = null;
-    if (localIds.length > 0) onLocalChange?.(localIds);
-    listeners.forEach((listener) => listener());
-  }
+  const store = createRecordStore<Workout>(storage, {
+    prefix: 'workouts:v1:',
+    parse: parseWorkoutRecord,
+    sort: (a, b) => Date.parse(b.date) - Date.parse(a.date),
+    onLocalChange,
+  });
 
   return {
-    list,
-    listAll,
-
-    getById(id) {
-      const workout = parseWorkout(storage.getString(recordKey(id)));
-      return workout && workout.deletedAt === null ? workout : undefined;
-    },
-
-    getRecord(id) {
-      return parseWorkout(storage.getString(recordKey(id))) ?? undefined;
-    },
+    list: store.list,
+    listAll: store.listAll,
+    getById: store.getActive,
+    getRecord: store.getRecord,
+    subscribe: store.subscribe,
 
     create(input) {
       const error = validate(input);
@@ -168,16 +111,13 @@ export function createWorkoutRepository(
 
       const timestamp = now();
       const workout = toRecord(input, { id: generateId(), createdAt: timestamp, updatedAt: timestamp });
-
-      storage.set(recordKey(workout.id), JSON.stringify(workout));
-      storage.set(INDEX_KEY, JSON.stringify([...readIndex(), workout.id]));
-      changed([workout.id]);
+      store.write(workout);
       return ok(workout);
     },
 
     update(id, patch) {
-      const current = parseWorkout(storage.getString(recordKey(id)));
-      if (!current || current.deletedAt !== null) return err('NOT_FOUND');
+      const current = store.getActive(id);
+      if (!current) return err('NOT_FOUND');
 
       const merged: NewWorkout = {
         date: patch.date ?? current.date,
@@ -191,54 +131,18 @@ export function createWorkoutRepository(
       if (error) return err(error);
 
       const workout = toRecord(merged, { id, createdAt: current.createdAt, updatedAt: now() });
-      storage.set(recordKey(id), JSON.stringify(workout));
-      changed([id]);
+      store.write(workout);
       return ok(workout);
     },
 
     remove(id) {
-      const workout = parseWorkout(storage.getString(recordKey(id)));
-      if (!workout || workout.deletedAt !== null) return false;
+      const workout = store.getActive(id);
+      if (!workout) return false;
       const timestamp = now();
-      storage.set(recordKey(id), JSON.stringify({ ...workout, deletedAt: timestamp, updatedAt: timestamp }));
-      changed([id]);
+      store.write({ ...workout, deletedAt: timestamp, updatedAt: timestamp });
       return true;
     },
 
-    importWorkouts(workouts, { origin = 'file' } = {}) {
-      const summary: ImportSummary = { added: 0, updated: 0, unchanged: 0 };
-      const changedIds: string[] = [];
-      const index = readIndex();
-      const known = new Set(index);
-
-      for (const incoming of workouts) {
-        const current = parseWorkout(storage.getString(recordKey(incoming.id)));
-        if (current && Date.parse(current.updatedAt) >= Date.parse(incoming.updatedAt)) {
-          summary.unchanged++;
-          continue;
-        }
-        storage.set(recordKey(incoming.id), JSON.stringify(incoming));
-        if (!known.has(incoming.id)) {
-          index.push(incoming.id);
-          known.add(incoming.id);
-        }
-        changedIds.push(incoming.id);
-        if (current) summary.updated++;
-        else summary.added++;
-      }
-
-      if (changedIds.length > 0) {
-        storage.set(INDEX_KEY, JSON.stringify(index));
-        changed(origin === 'remote' ? [] : changedIds);
-      }
-      return summary;
-    },
-
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    importWorkouts: store.importRecords,
   };
 }
