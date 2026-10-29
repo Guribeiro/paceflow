@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Field } from '../components/Field';
 import { RaceTable } from '../components/RaceTable';
+import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { UnitToggle } from '../components/UnitToggle';
 import {
   type DistanceUnit,
@@ -124,6 +125,10 @@ export function CalculatorScreen() {
             </Text>
           )}
         </View>
+
+        {pace && duration.ok ? (
+          <SaveWorkoutForm distanceKm={pace.distanceKm} durationSeconds={duration.value} />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
