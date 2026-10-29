@@ -11,6 +11,7 @@ import {
   toKilometers,
 } from '../domain/pace';
 import { NOTE_MAX_LENGTH, type Workout } from '../domain/workout';
+import { dateOnDay, dayKeyOf, recentDays } from '../domain/workout-date';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
@@ -30,6 +31,15 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
   const [rpe, setRpe] = useState<number | undefined>(workout.rpe);
   const [note, setNote] = useState(workout.note ?? '');
   const [failed, setFailed] = useState(false);
+  const originalDayKey = dayKeyOf(workout.date);
+  const [dayKey, setDayKey] = useState(originalDayKey);
+
+  // Treinos com mais de 7 dias mantêm a data deles como opção extra.
+  const dayOptions = recentDays().map((d) => ({ value: d.key, label: d.label }));
+  if (!dayOptions.some((d) => d.value === originalDayKey)) {
+    const [y, m, d] = originalDayKey.split('-');
+    dayOptions.push({ value: originalDayKey, label: `${d}/${m}/${y}` });
+  }
 
   const distance = parseDistance(distanceText);
   const duration = parseDuration(durationText);
@@ -40,6 +50,8 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
   function save() {
     if (!distance.ok || !duration.ok) return;
     const result = workoutRepository.update(workout.id, {
+      // Mesmo dia: preserva a hora original em vez de trocar pela atual.
+      ...(dayKey !== originalDayKey && { date: dateOnDay(dayKey) }),
       distanceMeters: toKilometers(distance.value, unit) * 1000,
       durationSeconds: duration.value,
       terrain,
@@ -69,6 +81,7 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
         />
       </View>
 
+      <ChoiceChips label="Dia" options={dayOptions} value={dayKey} onChange={(v) => v && setDayKey(v)} />
       <ChoiceChips label="Terreno" options={TERRAIN_OPTIONS} value={terrain} onChange={(v) => v && setTerrain(v)} />
       <ChoiceChips label="Esforço percebido (RPE)" options={RPE_OPTIONS} value={rpe} onChange={setRpe} />
 

@@ -66,6 +66,24 @@ describe('WorkoutLogScreen', () => {
     expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeOnTheScreen();
   });
 
+  it('muda o dia do treino na edição e preserva a hora se o dia não mudar', async () => {
+    const workout = addWorkout();
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+
+    await user.press(screen.getAllByRole('button', { name: 'Editar treino' })[0]);
+    expect(screen.getByRole('radio', { name: 'Hoje' })).toBeChecked();
+    await user.press(screen.getByRole('button', { name: 'Salvar' }));
+    expect(workoutRepository.getById(workout.id)?.date).toBe(workout.date);
+
+    await user.press(screen.getAllByRole('button', { name: 'Editar treino' })[0]);
+    await user.press(screen.getByRole('radio', { name: 'Ontem' }));
+    await user.press(screen.getByRole('button', { name: 'Salvar' }));
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    expect(new Date(workoutRepository.getById(workout.id)!.date).toDateString()).toBe(yesterday.toDateString());
+  });
+
   it('não deixa salvar a edição com tempo inválido', async () => {
     addWorkout();
     const user = userEvent.setup();

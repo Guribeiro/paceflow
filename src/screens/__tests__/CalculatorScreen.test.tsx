@@ -54,4 +54,19 @@ describe('CalculatorScreen', () => {
     expect(workouts).toHaveLength(before + 1);
     expect(workouts[0]).toMatchObject({ distanceMeters: 5000, durationSeconds: 1500, terrain: 'pista', rpe: 7 });
   });
+
+  it('registra o treino no dia escolhido, mantendo a hora atual', async () => {
+    const user = await fillIn('5', '25:00');
+    expect(screen.getByRole('radio', { name: 'Hoje' })).toBeChecked();
+
+    await user.press(screen.getByRole('radio', { name: 'Ontem' }));
+    await user.press(screen.getByRole('radio', { name: 'Rua' }));
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    const saved = new Date(workoutRepository.list().find((w) => w.terrain === 'rua')!.date);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    expect(saved.toDateString()).toBe(yesterday.toDateString());
+  });
 });
+

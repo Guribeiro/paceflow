@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
+import { dateOnDay, recentDays } from '../domain/workout-date';
 import { ChoiceChips } from './ChoiceChips';
 import { usePlaceholderColor } from './placeholder-color';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
@@ -18,11 +19,14 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // Recalculado a cada render: um app aberto desde ontem não oferece "Hoje" errado.
+  const days = recentDays();
+  const [dayKey, setDayKey] = useState(days[0].key);
 
   function save() {
     if (!terrain) return;
     const result = workoutRepository.create({
-      date: new Date().toISOString(),
+      date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
       durationSeconds,
       terrain,
@@ -44,6 +48,12 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
         Registrar no diário
       </Text>
 
+      <ChoiceChips
+        label="Dia"
+        options={days.map((d) => ({ value: d.key, label: d.label }))}
+        value={dayKey}
+        onChange={(value) => value && setDayKey(value)}
+      />
       <ChoiceChips
         label="Terreno"
         options={TERRAIN_OPTIONS}
