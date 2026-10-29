@@ -5,3 +5,4 @@ export * from './pace';
 export * from './predictor';
 export * from './parse-distance';
 export * from './training-paces';
+export * from './intervals';
