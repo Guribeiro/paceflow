@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountSection } from '../components/AccountSection';
 import { ChoiceChips } from '../components/ChoiceChips';
 import type { ThemePreference } from '../data/repositories/preferences-repository';
 import type { DistanceUnit } from '../domain/pace';
@@ -34,10 +35,13 @@ export function SettingsScreen() {
         <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
         <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
 
+        <AccountSection />
+
         <View className="gap-1 rounded-xl border-2 border-black p-4 dark:border-white">
           <Text className="text-lg font-bold text-black dark:text-white">PaceFlow {Constants.expoConfig?.version}</Text>
           <Text className="text-base text-neutral-700 dark:text-neutral-300">
-            Seus dados ficam só neste aparelho. Use o Backup no Diário para exportar ou restaurar.
+            Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup no Diário
+            exporta e restaura arquivos.
           </Text>
         </View>
       </ScrollView>

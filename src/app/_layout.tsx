@@ -3,11 +3,13 @@ import { NativeTabs } from 'expo-router/native-tabs';
 import { StatusBar } from 'expo-status-bar';
 
 import { useApplyTheme } from '../hooks/useApplyTheme';
+import { useAutoSync } from '../hooks/useAutoSync';
 import { useWidgetSync } from '../hooks/useWidgetSync';
 
 export default function RootLayout() {
   useApplyTheme();
   useWidgetSync();
+  useAutoSync();
 
   return (
     <>
