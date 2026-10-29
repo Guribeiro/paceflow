@@ -3,6 +3,7 @@ import { Alert, FlatList, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
+import { ExportButtons } from '../components/ExportButtons';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
 import { workoutRepository } from '../data/workouts';
 import {
@@ -138,6 +139,7 @@ export function WorkoutLogScreen() {
               Diário
             </Text>
             <WeekSummaryCard summary={summary} unit={unit} />
+            {workouts.length > 0 ? <ExportButtons /> : null}
           </View>
         }
         ListEmptyComponent={

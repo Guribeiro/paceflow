@@ -1,8 +1,12 @@
 import { act, render, screen, userEvent } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
+import { shareFile } from '../../data/export/share-file';
 import { workoutRepository } from '../../data/workouts';
 import { WorkoutLogScreen } from '../WorkoutLogScreen';
+
+jest.mock('../../data/export/share-file', () => ({ shareFile: jest.fn(() => Promise.resolve()) }));
+const mockShareFile = jest.mocked(shareFile);
 
 function addWorkout() {
   const result = workoutRepository.create({
@@ -23,6 +27,7 @@ describe('WorkoutLogScreen', () => {
     await render(<WorkoutLogScreen />);
     expect(screen.getByText(/Nenhum treino ainda/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Esta semana: 0,0 quilômetros, 0 treinos/)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeOnTheScreen();
   });
 
   it('lista o treino e soma no resumo da semana', async () => {
@@ -86,5 +91,49 @@ describe('WorkoutLogScreen', () => {
 
     expect(workoutRepository.getById(workout.id)).toBeUndefined();
     expect(screen.getAllByRole('button', { name: 'Excluir treino' })).toHaveLength(before - 1);
+  });
+
+  describe('exportação', () => {
+    beforeEach(() => mockShareFile.mockClear());
+
+    it('exporta CSV com o nome e o tipo corretos', async () => {
+      addWorkout();
+      const user = userEvent.setup();
+      await render(<WorkoutLogScreen />);
+
+      await user.press(screen.getByRole('button', { name: 'Exportar CSV' }));
+
+      expect(mockShareFile).toHaveBeenCalledTimes(1);
+      const [name, content, mime] = mockShareFile.mock.calls[0];
+      expect(name).toMatch(/^paceflow-treinos-\d{4}-\d{2}-\d{2}\.csv$/);
+      expect(mime).toBe('text/csv');
+      expect(content).toContain('data;hora;distancia_km');
+      expect(content).toContain('Longão leve');
+    });
+
+    it('exporta JSON com os treinos ativos', async () => {
+      addWorkout();
+      const user = userEvent.setup();
+      await render(<WorkoutLogScreen />);
+
+      await user.press(screen.getByRole('button', { name: 'Exportar JSON' }));
+
+      const [name, content, mime] = mockShareFile.mock.calls[0];
+      expect(name).toMatch(/\.json$/);
+      expect(mime).toBe('application/json');
+      expect(JSON.parse(content).workouts).toHaveLength(workoutRepository.list().length);
+    });
+
+    it('mostra erro se o compartilhamento falhar', async () => {
+      addWorkout();
+      mockShareFile.mockRejectedValueOnce(new Error('SHARING_UNAVAILABLE'));
+      const user = userEvent.setup();
+      await render(<WorkoutLogScreen />);
+
+      await user.press(screen.getByRole('button', { name: 'Exportar CSV' }));
+
+      expect(await screen.findByText('Não foi possível exportar. Tente de novo.')).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeEnabled();
+    });
   });
 });
