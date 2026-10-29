@@ -76,7 +76,7 @@ describe('CalculatorScreen', () => {
     await user.press(screen.getByRole('radio', { name: 'esforço 7' }));
     await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
 
-    expect(screen.getByText('✓ Treino salvo no diário')).toBeOnTheScreen();
+    expect(screen.getByText(/^✓ Treino salvo no diário/)).toBeOnTheScreen();
     const workouts = workoutRepository.list();
     expect(workouts).toHaveLength(before + 1);
     expect(workouts[0]).toMatchObject({ distanceMeters: 5000, durationSeconds: 1500, terrain: 'pista', rpe: 7 });

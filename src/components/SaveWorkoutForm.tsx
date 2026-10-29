@@ -5,10 +5,12 @@ import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
 import { shoeRepository } from '../data/shoes';
+import { newRecords, personalRecords } from '../domain/personal-records';
 import { suggestedShoeId } from '../domain/shoe-mileage';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
+import { recordMessage } from './PersonalRecordsCard';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
@@ -26,6 +28,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [celebration, setCelebration] = useState<{ text: string; spoken: string } | null>(null);
   // Esforço já salvo: o botão só reativa quando o esforço ou algum campo muda,
   // senão um segundo toque gravaria o mesmo treino de novo.
   const effortKey = distanceKm !== null && durationSeconds !== null ? `${distanceKm}|${durationSeconds}` : null;
@@ -50,6 +53,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
 
   function save() {
     if (!terrain || saved || distanceKm === null || durationSeconds === null) return;
+    const before = personalRecords(workoutRepository.list());
     const result = workoutRepository.create({
       date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
@@ -61,6 +65,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
     });
     if (result.ok) {
       setStatus('saved');
+      setCelebration(recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before));
       setSavedEffort(effortKey);
       setRpe(undefined);
       setNote('');
@@ -118,12 +123,16 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
       {status === 'error' || (status === 'saved' && saved) ? (
         <Text
           accessibilityLiveRegion="polite"
-          accessibilityLabel={status === 'saved' ? 'Treino salvo no diário' : undefined}
+          accessibilityLabel={
+            status === 'saved' ? `Treino salvo no diário${celebration ? `. ${celebration.spoken}` : ''}` : undefined
+          }
           className={`text-base font-semibold ${
             status === 'saved' ? 'text-black dark:text-white' : 'text-red-700 dark:text-red-400'
           }`}
         >
-          {status === 'saved' ? '✓ Treino salvo no diário' : 'Não foi possível salvar o treino.'}
+          {status === 'saved'
+            ? `✓ Treino salvo no diário${celebration ? `\n${celebration.text}` : ''}`
+            : 'Não foi possível salvar o treino.'}
         </Text>
       ) : null}
     </Card>

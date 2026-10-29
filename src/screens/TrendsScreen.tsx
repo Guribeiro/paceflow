@@ -3,6 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
+import { PersonalRecordsCard } from '../components/PersonalRecordsCard';
 import { RaceGoalCard } from '../components/RaceGoalCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
@@ -63,6 +64,7 @@ export function TrendsScreen() {
           </Text>
 
           <RaceGoalCard unit={unit} />
+          <PersonalRecordsCard unit={unit} />
           <TrainingPlan unit={unit} />
 
           {trends.activeWeeks === 0 ? (
