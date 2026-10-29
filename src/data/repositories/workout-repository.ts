@@ -13,7 +13,14 @@ const recordKey = (id: string) => `${PREFIX}${id}`;
 
 export type NewWorkout = Pick<Workout, 'date' | 'distanceMeters' | 'durationSeconds' | 'terrain' | 'rpe' | 'note'>;
 
+/** Campos omitidos ficam como estão; `null` limpa RPE ou nota. */
+export type WorkoutPatch = Partial<Omit<NewWorkout, 'rpe' | 'note'>> & {
+  rpe?: number | null;
+  note?: string | null;
+};
+
 export type WorkoutError =
+  | 'NOT_FOUND'
   | 'INVALID_DATE'
   | 'INVALID_DISTANCE'
   | 'INVALID_DURATION'
@@ -28,6 +35,7 @@ export interface WorkoutRepository {
   listAll(): Workout[];
   getById(id: string): Workout | undefined;
   create(input: NewWorkout): Result<Workout, WorkoutError>;
+  update(id: string, patch: WorkoutPatch): Result<Workout, WorkoutError>;
   remove(id: string): boolean;
   subscribe(listener: () => void): () => void;
 }
@@ -47,6 +55,25 @@ function validate(input: NewWorkout): WorkoutError | null {
   if (input.rpe !== undefined && !isValidRpe(input.rpe)) return 'INVALID_RPE';
   if (input.note !== undefined && input.note.trim().length > NOTE_MAX_LENGTH) return 'INVALID_NOTE';
   return null;
+}
+
+function toRecord(
+  input: NewWorkout,
+  meta: Pick<Workout, 'id' | 'createdAt' | 'updatedAt'>,
+): Workout {
+  const note = input.note?.trim();
+  return {
+    id: meta.id,
+    date: input.date,
+    distanceMeters: input.distanceMeters,
+    durationSeconds: input.durationSeconds,
+    terrain: input.terrain,
+    ...(input.rpe !== undefined && { rpe: input.rpe }),
+    ...(note && { note }),
+    createdAt: meta.createdAt,
+    updatedAt: meta.updatedAt,
+    deletedAt: null,
+  };
 }
 
 function parseWorkout(raw: string | undefined): Workout | null {
@@ -127,22 +154,31 @@ export function createWorkoutRepository(
       if (error) return err(error);
 
       const timestamp = now();
-      const note = input.note?.trim();
-      const workout: Workout = {
-        id: generateId(),
-        date: input.date,
-        distanceMeters: input.distanceMeters,
-        durationSeconds: input.durationSeconds,
-        terrain: input.terrain,
-        ...(input.rpe !== undefined && { rpe: input.rpe }),
-        ...(note && { note }),
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        deletedAt: null,
-      };
+      const workout = toRecord(input, { id: generateId(), createdAt: timestamp, updatedAt: timestamp });
 
       storage.set(recordKey(workout.id), JSON.stringify(workout));
       storage.set(INDEX_KEY, JSON.stringify([...readIndex(), workout.id]));
+      changed();
+      return ok(workout);
+    },
+
+    update(id, patch) {
+      const current = parseWorkout(storage.getString(recordKey(id)));
+      if (!current || current.deletedAt !== null) return err('NOT_FOUND');
+
+      const merged: NewWorkout = {
+        date: patch.date ?? current.date,
+        distanceMeters: patch.distanceMeters ?? current.distanceMeters,
+        durationSeconds: patch.durationSeconds ?? current.durationSeconds,
+        terrain: patch.terrain ?? current.terrain,
+        rpe: patch.rpe === null ? undefined : (patch.rpe ?? current.rpe),
+        note: patch.note === null ? undefined : (patch.note ?? current.note),
+      };
+      const error = validate(merged);
+      if (error) return err(error);
+
+      const workout = toRecord(merged, { id, createdAt: current.createdAt, updatedAt: now() });
+      storage.set(recordKey(id), JSON.stringify(workout));
       changed();
       return ok(workout);
     },

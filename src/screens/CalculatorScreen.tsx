@@ -6,8 +6,8 @@ import { Field } from '../components/Field';
 import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { UnitToggle } from '../components/UnitToggle';
+import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import {
-  type DistanceUnit,
   calculatePace,
   formatDuration,
   parseDistance,
@@ -19,7 +19,7 @@ import {
 const tabular = { fontVariant: ['tabular-nums' as const] };
 
 export function CalculatorScreen() {
-  const [unit, setUnit] = useState<DistanceUnit>('km');
+  const [unit, setUnit] = usePreferredUnit();
   const [distanceText, setDistanceText] = useState('');
   const [durationText, setDurationText] = useState('');
 

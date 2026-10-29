@@ -83,6 +83,71 @@ describe('WorkoutRepository', () => {
     expect(repo.remove('id-1')).toBe(false);
   });
 
+  describe('update', () => {
+    it('altera campos, atualiza updatedAt e mantém createdAt', () => {
+      const { repo, advance } = setup();
+      created(repo.create({ ...base, rpe: 5 }));
+      advance(60_000);
+      const result = repo.update('id-1', { terrain: 'pista', rpe: 8, note: 'Intervalado' });
+      expect(result).toEqual({
+        ok: true,
+        value: expect.objectContaining({
+          terrain: 'pista',
+          rpe: 8,
+          note: 'Intervalado',
+          distanceMeters: 5000,
+          createdAt: '2026-10-29T10:00:00.000Z',
+          updatedAt: '2026-10-29T10:01:00.000Z',
+        }),
+      });
+      expect(repo.getById('id-1')).toMatchObject({ terrain: 'pista', rpe: 8 });
+    });
+
+    it('null limpa RPE e nota', () => {
+      const { repo } = setup();
+      created(repo.create({ ...base, rpe: 5, note: 'Leve' }));
+      const result = repo.update('id-1', { rpe: null, note: null });
+      if (!result.ok) throw new Error(result.error);
+      expect(result.value).not.toHaveProperty('rpe');
+      expect(result.value).not.toHaveProperty('note');
+    });
+
+    it('nota só com espaços também limpa', () => {
+      const { repo } = setup();
+      created(repo.create({ ...base, note: 'Leve' }));
+      const result = repo.update('id-1', { note: '   ' });
+      if (!result.ok) throw new Error(result.error);
+      expect(result.value).not.toHaveProperty('note');
+    });
+
+    it('valida o resultado e não grava se for inválido', () => {
+      const { repo } = setup();
+      created(repo.create(base));
+      expect(repo.update('id-1', { distanceMeters: 0 })).toEqual({ ok: false, error: 'INVALID_DISTANCE' });
+      expect(repo.update('id-1', { rpe: 11 })).toEqual({ ok: false, error: 'INVALID_RPE' });
+      expect(repo.getById('id-1')).toMatchObject({ distanceMeters: 5000 });
+    });
+
+    it('retorna NOT_FOUND para id inexistente ou removido', () => {
+      const { repo } = setup();
+      expect(repo.update('nope', { rpe: 5 })).toEqual({ ok: false, error: 'NOT_FOUND' });
+      created(repo.create(base));
+      repo.remove('id-1');
+      expect(repo.update('id-1', { rpe: 5 })).toEqual({ ok: false, error: 'NOT_FOUND' });
+    });
+
+    it('notifica assinantes e reordena a lista se a data mudar', () => {
+      const { repo } = setup();
+      created(repo.create({ ...base, date: '2026-10-28T07:00:00.000Z' }));
+      created(repo.create({ ...base, date: '2026-10-29T07:00:00.000Z' }));
+      const listener = jest.fn();
+      repo.subscribe(listener);
+      repo.update('id-1', { date: '2026-10-30T07:00:00.000Z' });
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(repo.list().map((w) => w.id)).toEqual(['id-1', 'id-2']);
+    });
+  });
+
   describe('validação', () => {
     it.each([
       [{ distanceMeters: 0 }, 'INVALID_DISTANCE'],

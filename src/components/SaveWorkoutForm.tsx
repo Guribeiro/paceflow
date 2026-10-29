@@ -2,15 +2,9 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
-import { NOTE_MAX_LENGTH, RPE_MAX, RPE_MIN, TERRAINS, TERRAIN_LABELS, type Terrain } from '../domain/workout';
+import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
 import { ChoiceChips } from './ChoiceChips';
-
-const TERRAIN_OPTIONS = TERRAINS.map((t) => ({ value: t, label: TERRAIN_LABELS[t] }));
-const RPE_OPTIONS = Array.from({ length: RPE_MAX - RPE_MIN + 1 }, (_, i) => ({
-  value: RPE_MIN + i,
-  label: String(RPE_MIN + i),
-  spoken: `esforço ${RPE_MIN + i}`,
-}));
+import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 
 interface Props {
   distanceKm: number;
