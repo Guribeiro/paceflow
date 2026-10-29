@@ -85,5 +85,31 @@ describe('PreferencesRepository', () => {
       expect(listener).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('prova-alvo', () => {
+    const goal = { distanceKm: 21.0975, date: '2026-11-23', targetSeconds: 6300 };
+
+    it('salva, persiste e remove', () => {
+      const storage = new InMemoryStorage();
+      const repo = createPreferencesRepository(storage);
+      expect(repo.getRaceGoal()).toBeNull();
+      repo.setRaceGoal(goal);
+      expect(createPreferencesRepository(storage).getRaceGoal()).toEqual(goal);
+      repo.setRaceGoal(null);
+      expect(repo.getRaceGoal()).toBeNull();
+    });
+
+    it('devolve a mesma referência enquanto nada muda (useSyncExternalStore)', () => {
+      const repo = createPreferencesRepository(new InMemoryStorage());
+      repo.setRaceGoal(goal);
+      expect(repo.getRaceGoal()).toBe(repo.getRaceGoal());
+    });
+
+    it('JSON inválido vira sem prova', () => {
+      const storage = new InMemoryStorage();
+      storage.set('prefs:v1:raceGoal', '{quebrado');
+      expect(createPreferencesRepository(storage).getRaceGoal()).toBeNull();
+    });
+  });
 });
 
