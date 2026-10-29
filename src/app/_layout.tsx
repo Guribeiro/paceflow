@@ -1,7 +1,11 @@
 import '../../global.css';
 import { NativeTabs } from 'expo-router/native-tabs';
 
+import { useSyncWebColorScheme } from '../hooks/useSyncWebColorScheme';
+
 export default function RootLayout() {
+  useSyncWebColorScheme();
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
