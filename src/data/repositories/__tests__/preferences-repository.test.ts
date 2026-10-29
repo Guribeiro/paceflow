@@ -29,4 +29,30 @@ describe('PreferencesRepository', () => {
     repo.setUnit('km');
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  describe('tema', () => {
+    it('segue o sistema quando nada foi salvo', () => {
+      expect(createPreferencesRepository(new InMemoryStorage()).getTheme()).toBe('system');
+    });
+
+    it.each(['light', 'dark', 'system'] as const)('salva e persiste "%s"', (theme) => {
+      const storage = new InMemoryStorage();
+      createPreferencesRepository(storage).setTheme(theme);
+      expect(createPreferencesRepository(storage).getTheme()).toBe(theme);
+    });
+
+    it('volta para system se o valor salvo for inválido', () => {
+      const storage = new InMemoryStorage();
+      storage.set('prefs:v1:theme', 'sépia');
+      expect(createPreferencesRepository(storage).getTheme()).toBe('system');
+    });
+
+    it('notifica assinantes ao mudar', () => {
+      const repo = createPreferencesRepository(new InMemoryStorage());
+      const listener = jest.fn();
+      repo.subscribe(listener);
+      repo.setTheme('dark');
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
 });
