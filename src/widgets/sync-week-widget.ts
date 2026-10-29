@@ -11,7 +11,14 @@ const loadWidget = (): Promise<WidgetModule> => import('./WeekWidget');
 export async function syncWeekWidget(now: Date = new Date(), load: () => Promise<WidgetModule> = loadWidget) {
   try {
     const { default: WeekWidget } = await load();
-    WeekWidget.updateSnapshot(buildWeekWidgetProps(workoutRepository.list(), preferencesRepository.getUnit(), now));
+    WeekWidget.updateSnapshot(
+      buildWeekWidgetProps(
+        workoutRepository.list(),
+        preferencesRepository.getUnit(),
+        now,
+        preferencesRepository.getWeeklyGoal(),
+      ),
+    );
   } catch (error) {
     if (__DEV__) console.warn('Widget não atualizado:', error);
   }

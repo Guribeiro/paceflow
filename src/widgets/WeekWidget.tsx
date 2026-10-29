@@ -1,5 +1,5 @@
-import { Column, Text } from '@expo/ui/jetpack-compose';
-import { background, cornerRadius, fillMaxSize, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
+import { Column, LinearProgressIndicator, Text } from '@expo/ui/jetpack-compose';
+import { background, cornerRadius, fillMaxSize, fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
 import type { WeekWidgetProps } from '../domain/widget-snapshot';
@@ -35,6 +35,19 @@ const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
         <Text color={muted} maxLines={1} style={{ fontSize: 14, fontWeight: '600' }}>
           {props.lastPace ? `Último: ${props.lastPace}` : 'Registre um treino'}
         </Text>
+        {props.goal ? (
+          <Text color={fg} maxLines={1} style={{ fontSize: 14, fontWeight: 'bold' }}>
+            {props.goal}
+          </Text>
+        ) : null}
+        {props.goalRatio !== null ? (
+          <LinearProgressIndicator
+            progress={props.goalRatio}
+            color={fg}
+            trackColor={dark ? '#525252' : '#d4d4d4'}
+            modifiers={[fillMaxWidth()]}
+          />
+        ) : null}
       </Column>
     </Column>
   );
@@ -46,4 +59,6 @@ export default createWidget<WeekWidgetProps>('WeekWidget', WeekWidget, {
   unit: 'km',
   count: 'Nenhum treino',
   lastPace: null,
+  goal: null,
+  goalRatio: null,
 });

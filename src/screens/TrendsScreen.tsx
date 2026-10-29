@@ -7,6 +7,7 @@ import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
 import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
+import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 
 const WEEKS = 12;
@@ -35,6 +36,7 @@ function StatTile({ label, value, detail }: { label: string; value: string; deta
 export function TrendsScreen() {
   const workouts = useWorkouts();
   const [unit] = usePreferredUnit();
+  const [goalMeters] = useWeeklyGoal();
   const large = useLargeText();
   const weeks = useMemo(() => weeklyTotals(workouts, new Date(), WEEKS), [workouts]);
   const trends = useMemo(() => summarizeTrends(weeks), [weeks]);
@@ -71,7 +73,7 @@ export function TrendsScreen() {
                 {week.count === 1 ? 'treino' : 'treinos'}
                 {weekPace !== null ? ` · ${paceIn(weekPace)}/${unit}` : ''}
               </Text>
-              <WeeklyBarChart weeks={weeks} unit={unit} selected={selected} onSelect={setSelected} />
+              <WeeklyBarChart weeks={weeks} unit={unit} selected={selected} onSelect={setSelected} goalMeters={goalMeters} />
             </View>
 
             <View className={`${large ? 'flex-col' : 'flex-row flex-wrap'} gap-3`}>

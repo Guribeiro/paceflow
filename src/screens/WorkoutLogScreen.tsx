@@ -16,6 +16,7 @@ import {
 import { TERRAIN_LABELS, type Workout } from '../domain/workout';
 import { summarizeWeek } from '../domain/workout-summary';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
+import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 
 const tabular = { fontVariant: ['tabular-nums' as const] };
@@ -123,6 +124,7 @@ function WorkoutItem({ workout, unit }: { workout: Workout; unit: DistanceUnit }
 export function WorkoutLogScreen() {
   const workouts = useWorkouts();
   const [unit] = usePreferredUnit();
+  const [goalMeters] = useWeeklyGoal();
   const summary = useMemo(() => summarizeWeek(workouts), [workouts]);
 
   return (
@@ -138,7 +140,7 @@ export function WorkoutLogScreen() {
             <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
               Diário
             </Text>
-            <WeekSummaryCard summary={summary} unit={unit} />
+            <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
             <BackupSection canExport={workouts.length > 0} />
           </View>
         }

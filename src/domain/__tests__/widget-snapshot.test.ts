@@ -29,6 +29,8 @@ describe('buildWeekWidgetProps', () => {
       unit: 'km',
       count: 'Nenhum treino',
       lastPace: null,
+      goal: null,
+      goalRatio: null,
     });
   });
 
@@ -74,4 +76,19 @@ describe('buildWeekWidgetProps', () => {
   it('o rótulo acompanha a virada de semana', () => {
     expect(buildWeekWidgetProps([], 'km', local(2026, 11, 2, 8)).weekLabel).toBe('Semana de 02/11');
   });
+
+  it('mostra o progresso da meta semanal na unidade preferida', () => {
+    const workouts = [workout(local(2026, 10, 27), { distanceMeters: 12400 })];
+    expect(buildWeekWidgetProps(workouts, 'km', now, 20000)).toMatchObject({
+      goal: '62% da meta de 20,00 km',
+      goalRatio: 0.62,
+    });
+    expect(buildWeekWidgetProps(workouts, 'km', now, 10000)).toMatchObject({
+      goal: 'Meta de 10,00 km batida!',
+      goalRatio: 1,
+    });
+    expect(buildWeekWidgetProps(workouts, 'mi', now, 16093.44).goal).toBe('77% da meta de 10,00 mi');
+    expect(buildWeekWidgetProps(workouts, 'km', now, null).goal).toBeNull();
+  });
 });
+

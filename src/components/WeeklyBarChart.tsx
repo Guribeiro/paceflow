@@ -61,8 +61,8 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
         {goalMeters ? (
           <View
             pointerEvents="none"
-            accessible={false}
-            importantForAccessibility="no-hide-descendants"
+            accessible
+            accessibilityLabel={`Meta semanal: ${formatDistance(goalMeters, unit)} ${spokenUnit}`}
             style={{ bottom: (goalMeters / scaleMax) * CHART_HEIGHT }}
             className="absolute left-0 right-0 border-t-2 border-dashed border-black dark:border-white"
           >

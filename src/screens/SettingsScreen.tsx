@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountSection } from '../components/AccountSection';
 import { ChoiceChips } from '../components/ChoiceChips';
+import { WeeklyGoalSetting } from '../components/WeeklyGoalSetting';
 import type { ThemePreference } from '../data/repositories/preferences-repository';
 import type { DistanceUnit } from '../domain/pace';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
@@ -34,6 +35,7 @@ export function SettingsScreen() {
         {/* Seleção obrigatória: tocar na opção ativa não desmarca. */}
         <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
         <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
+        <WeeklyGoalSetting unit={unit} />
 
         <AccountSection />
 

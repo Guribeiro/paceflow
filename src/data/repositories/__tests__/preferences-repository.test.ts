@@ -55,4 +55,35 @@ describe('PreferencesRepository', () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('meta semanal', () => {
+    it('começa sem meta', () => {
+      expect(createPreferencesRepository(new InMemoryStorage()).getWeeklyGoal()).toBeNull();
+    });
+
+    it('salva em metros, persiste e pode ser removida', () => {
+      const storage = new InMemoryStorage();
+      const repo = createPreferencesRepository(storage);
+      repo.setWeeklyGoal(20000);
+      expect(createPreferencesRepository(storage).getWeeklyGoal()).toBe(20000);
+      repo.setWeeklyGoal(null);
+      expect(createPreferencesRepository(storage).getWeeklyGoal()).toBeNull();
+    });
+
+    it.each(['abc', '-5', '0', 'Infinity'])('valor salvo inválido (%s) vira sem meta', (raw) => {
+      const storage = new InMemoryStorage();
+      storage.set('prefs:v1:weeklyGoal', raw);
+      expect(createPreferencesRepository(storage).getWeeklyGoal()).toBeNull();
+    });
+
+    it('notifica ao mudar', () => {
+      const repo = createPreferencesRepository(new InMemoryStorage());
+      const listener = jest.fn();
+      repo.subscribe(listener);
+      repo.setWeeklyGoal(10000);
+      repo.setWeeklyGoal(null);
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+  });
 });
+

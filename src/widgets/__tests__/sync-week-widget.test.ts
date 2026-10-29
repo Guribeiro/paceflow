@@ -26,6 +26,8 @@ describe('syncWeekWidget', () => {
       unit: 'km',
       count: '1 treino',
       lastPace: '5:00/km',
+      goal: null,
+      goalRatio: null,
     });
   });
 

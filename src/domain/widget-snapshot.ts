@@ -1,5 +1,6 @@
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration } from './pace';
 import type { Workout } from './workout';
+import { goalProgress } from './weekly-goal';
 import { startOfWeek, summarizeWeek } from './workout-summary';
 
 /**
@@ -12,6 +13,9 @@ export interface WeekWidgetProps {
   unit: DistanceUnit;
   count: string;
   lastPace: string | null;
+  goal: string | null;
+  /** 0–1 para a barra de progresso; null sem meta. */
+  goalRatio: number | null;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -25,6 +29,7 @@ export function buildWeekWidgetProps(
   workouts: readonly Workout[],
   unit: DistanceUnit,
   now: Date = new Date(),
+  goalMeters: number | null = null,
 ): WeekWidgetProps {
   const monday = startOfWeek(now);
   const summary = summarizeWeek(workouts, now);
@@ -40,11 +45,22 @@ export function buildWeekWidgetProps(
     lastPace = `${formatDuration(pace)}/${unit}`;
   }
 
+  let goal: string | null = null;
+  let goalRatio: number | null = null;
+  if (goalMeters) {
+    const progress = goalProgress(summary.distanceMeters, goalMeters);
+    goalRatio = progress.ratio;
+    const target = `${formatDistance(goalMeters, unit)} ${unit}`;
+    goal = progress.reached ? `Meta de ${target} batida!` : `${progress.percent}% da meta de ${target}`;
+  }
+
   return {
     weekLabel: `Semana de ${pad2(monday.getDate())}/${pad2(monday.getMonth() + 1)}`,
     distance: formatDistance(summary.distanceMeters, unit),
     unit,
     count: countLabel(summary.count),
     lastPace,
+    goal,
+    goalRatio,
   };
 }
