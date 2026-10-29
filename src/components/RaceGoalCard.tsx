@@ -19,6 +19,7 @@ import { Field } from './Field';
 import { TrainingPaces } from './TrainingPaces';
 import { Button } from './ui/Button';
 import { tabular } from './ui/typography';
+import { Disclosure } from './ui/Disclosure';
 import { SectionHeader } from './ui/SectionHeader';
 
 const OTHER = 'other';
@@ -202,10 +203,9 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
       </View>
 
       {goal.targetSeconds && !summary.past ? (
-        <View className="gap-2">
-          <SectionHeader level={2}>Paces para a meta</SectionHeader>
+        <Disclosure title="Paces para a meta" showLabel="Ver paces da meta" hideLabel="Ocultar paces da meta" level={2}>
           <TrainingPaces distanceKm={goal.distanceKm} durationSeconds={goal.targetSeconds} unit={unit} />
-        </View>
+        </Disclosure>
       ) : null}
 
       <View className="flex-row flex-wrap gap-3">

@@ -22,7 +22,7 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { Disclosure } from '../components/ui/Disclosure';
 
 
 export function CalculatorScreen() {
@@ -150,32 +150,29 @@ export function CalculatorScreen() {
                 </View>
               </View>
 
-              <View className="gap-2">
-                <SectionHeader>Projeção de provas</SectionHeader>
-                {races ? (
-                  <>
-                    <RaceTable races={races} />
-                    <Text className="text-sm text-neutral-700 dark:text-neutral-300">
-                      Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
-                    </Text>
-                  </>
-                ) : (
-                  <Text className="text-base text-neutral-700 dark:text-neutral-300">
-                    Informe distância e tempo para ver as projeções.
-                  </Text>
-                )}
-              </View>
-
+              {/* A ação mais usada logo abaixo do resultado; consultas ficam recolhidas. */}
               {pace && duration.ok ? (
-                <View className="gap-2">
-                  <SectionHeader>Paces de treino</SectionHeader>
-                  <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
-                </View>
-              ) : null}
+                <>
+                  <SaveWorkoutForm distanceKm={pace.distanceKm} durationSeconds={duration.value} />
 
-              {pace && duration.ok ? (
-                <SaveWorkoutForm distanceKm={pace.distanceKm} durationSeconds={duration.value} />
-              ) : null}
+                  {races ? (
+                    <Disclosure title="Projeção de provas" showLabel="Ver projeção" hideLabel="Ocultar projeção">
+                      <RaceTable races={races} />
+                      <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+                        Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
+                      </Text>
+                    </Disclosure>
+                  ) : null}
+
+                  <Disclosure title="Paces de treino" showLabel="Ver paces" hideLabel="Ocultar paces">
+                    <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
+                  </Disclosure>
+                </>
+              ) : (
+                <Text className="text-base text-neutral-700 dark:text-neutral-300">
+                  Informe distância e tempo para ver o pace, registrar o treino e ver projeções.
+                </Text>
+              )}
             </>
           ) : (
             <IntervalsMode unit={unit} suggestedSecondsPerKm={suggestedInterval} />

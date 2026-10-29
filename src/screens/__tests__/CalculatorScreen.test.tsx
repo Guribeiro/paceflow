@@ -21,6 +21,20 @@ describe('CalculatorScreen', () => {
     await fillIn('5', '25:00');
     expect(screen.getByLabelText('Pace: 5 minutos por quilômetro')).toBeOnTheScreen();
     expect(screen.getByLabelText('Velocidade média: 12,0 km/h')).toBeOnTheScreen();
+  });
+
+  it('mostra registrar logo após o resultado e a projeção recolhida', async () => {
+    const user = await fillIn('5', '25:00');
+    const toggle = screen.getByRole('button', { name: 'Ver projeção' });
+    expect(toggle).toBeCollapsed();
+    expect(screen.queryByLabelText(/^10 km:/)).not.toBeOnTheScreen();
+    // Registrar vem antes das consultas na ordem de leitura.
+    const tree = JSON.stringify(screen.toJSON());
+    expect(tree.indexOf('Registrar no diário')).toBeLessThan(tree.indexOf('Ver projeção'));
+    expect(tree.indexOf('Ver projeção')).toBeLessThan(tree.indexOf('Ver paces'));
+
+    await user.press(toggle);
+    expect(screen.getByRole('button', { name: 'Ocultar projeção' })).toBeExpanded();
     expect(screen.getByLabelText(/^10 km: 52 minutos e 7 segundos/)).toBeOnTheScreen();
   });
 
@@ -87,14 +101,16 @@ describe('CalculatorScreen', () => {
   });
 
   it('sugere paces de treino a partir do esforço', async () => {
-    await fillIn('5', '19:57');
+    const user = await fillIn('5', '19:57');
+    await user.press(screen.getByRole('button', { name: 'Ver paces' }));
     expect(screen.getByLabelText(/^Limiar: 4 minutos e 15 segundos por quilômetro/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Intervalado: 3 minutos e 55 segundos por quilômetro, 1 minuto e 34 segundos a cada 400 metros/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Leve \/ longão: entre 5 minutos e 7 segundos e 5 minutos e 39 segundos/)).toBeOnTheScreen();
   });
 
   it('explica quando o esforço não serve para paces de treino', async () => {
-    await fillIn('0,4', '1:30');
+    const user = await fillIn('0,4', '1:30');
+    await user.press(screen.getByRole('button', { name: 'Ver paces' }));
     expect(screen.getByText(/Para sugerir paces de treino, use um esforço de prova entre 1,5 e 42,2 km/)).toBeOnTheScreen();
   });
 });

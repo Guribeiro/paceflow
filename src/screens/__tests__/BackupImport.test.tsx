@@ -4,7 +4,7 @@ import { pickTextFile } from '../../data/import/pick-text-file';
 import { workoutRepository } from '../../data/workouts';
 import { workoutsToJson } from '../../domain/export';
 import type { Workout } from '../../domain/workout';
-import { WorkoutLogScreen } from '../WorkoutLogScreen';
+import { SettingsScreen } from '../SettingsScreen';
 
 jest.mock('../../data/import/pick-text-file', () => ({ pickTextFile: jest.fn() }));
 const mockPickTextFile = jest.mocked(pickTextFile);
@@ -24,11 +24,11 @@ const backupWorkout = (id: string, overrides: Partial<Workout> = {}): Workout =>
 
 async function pressImport() {
   const user = userEvent.setup();
-  await render(<WorkoutLogScreen />);
+  await render(<SettingsScreen />);
   await user.press(screen.getByRole('button', { name: 'Importar backup JSON' }));
 }
 
-describe('WorkoutLogScreen — importação', () => {
+describe('Backup em Ajustes — importação', () => {
   beforeEach(() => mockPickTextFile.mockReset());
 
   // Os testes compartilham o MMKV mock deste arquivo; o primeiro roda com o diário vazio.
@@ -42,7 +42,6 @@ describe('WorkoutLogScreen — importação', () => {
 
     expect(await screen.findByText('2 treinos adicionados.')).toBeOnTheScreen();
     expect(workoutRepository.list().map((w) => w.id).sort()).toEqual(['a1', 'b2']);
-    expect(screen.getAllByRole('button', { name: 'Editar treino' })).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeOnTheScreen();
   });
 
@@ -110,7 +109,7 @@ describe('WorkoutLogScreen — importação', () => {
     mockPickTextFile.mockResolvedValue(workoutsToJson([backupWorkout('c3', { shoeId: 'shoe-1' })], new Date(), [shoe]));
     await pressImport();
     expect(await screen.findByText('1 treino adicionado, 1 tênis adicionado.')).toBeOnTheScreen();
-    expect(screen.getByText('Tênis: Pegasus')).toBeOnTheScreen();
+    expect(screen.getByText('Pegasus')).toBeOnTheScreen();
   });
 });
 

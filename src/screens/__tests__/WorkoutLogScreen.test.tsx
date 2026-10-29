@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 
 import { shareFile } from '../../data/export/share-file';
 import { workoutRepository } from '../../data/workouts';
+import { SettingsScreen } from '../SettingsScreen';
 import { WorkoutLogScreen } from '../WorkoutLogScreen';
 
 jest.mock('../../data/export/share-file', () => ({ shareFile: jest.fn(() => Promise.resolve()) }));
@@ -27,8 +28,8 @@ describe('WorkoutLogScreen', () => {
     await render(<WorkoutLogScreen />);
     expect(screen.getByText(/Nenhum treino ainda/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Esta semana: 0,0 quilômetros, 0 treinos/)).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: 'Exportar CSV' })).not.toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Importar backup JSON' })).toBeOnTheScreen();
+    // O Backup fica em Ajustes, não no Diário.
+    expect(screen.queryByRole('button', { name: 'Importar backup JSON' })).not.toBeOnTheScreen();
   });
 
   it('lista o treino e soma no resumo da semana', async () => {
@@ -112,13 +113,13 @@ describe('WorkoutLogScreen', () => {
     expect(screen.getAllByRole('button', { name: 'Excluir treino' })).toHaveLength(before - 1);
   });
 
-  describe('exportação', () => {
+  describe('exportação (em Ajustes)', () => {
     beforeEach(() => mockShareFile.mockClear());
 
     it('exporta CSV com o nome e o tipo corretos', async () => {
       addWorkout();
       const user = userEvent.setup();
-      await render(<WorkoutLogScreen />);
+      await render(<SettingsScreen />);
 
       await user.press(screen.getByRole('button', { name: 'Exportar CSV' }));
 
@@ -133,7 +134,7 @@ describe('WorkoutLogScreen', () => {
     it('exporta JSON com os treinos ativos', async () => {
       addWorkout();
       const user = userEvent.setup();
-      await render(<WorkoutLogScreen />);
+      await render(<SettingsScreen />);
 
       await user.press(screen.getByRole('button', { name: 'Exportar JSON' }));
 
@@ -147,7 +148,7 @@ describe('WorkoutLogScreen', () => {
       addWorkout();
       mockShareFile.mockRejectedValueOnce(new Error('SHARING_UNAVAILABLE'));
       const user = userEvent.setup();
-      await render(<WorkoutLogScreen />);
+      await render(<SettingsScreen />);
 
       await user.press(screen.getByRole('button', { name: 'Exportar CSV' }));
 

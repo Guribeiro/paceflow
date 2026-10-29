@@ -55,7 +55,7 @@ export function TrendsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
       <KeyboardAware>
-        <ScrollView contentContainerClassName="gap-5 p-4" keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
           <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
             Evolução
           </Text>

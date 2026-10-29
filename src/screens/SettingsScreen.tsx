@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { AccountSection } from '../components/AccountSection';
+import { BackupSection } from '../components/BackupSection';
 import { ChoiceChips } from '../components/ChoiceChips';
 import { ShoesSection } from '../components/ShoesSection';
 import { WeeklyGoalSetting } from '../components/WeeklyGoalSetting';
@@ -11,6 +12,7 @@ import type { ThemePreference } from '../data/repositories/preferences-repositor
 import type { DistanceUnit } from '../domain/pace';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
+import { useWorkouts } from '../hooks/useWorkouts';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; spoken: string }[] = [
   { value: 'system', label: 'Sistema', spoken: 'Tema do sistema' },
@@ -26,6 +28,7 @@ const UNIT_OPTIONS: { value: DistanceUnit; label: string; spoken: string }[] = [
 export function SettingsScreen() {
   const [theme, setTheme] = useThemePreference();
   const [unit, setUnit] = usePreferredUnit();
+  const workouts = useWorkouts();
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
@@ -40,13 +43,14 @@ export function SettingsScreen() {
           <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
           <WeeklyGoalSetting unit={unit} />
           <ShoesSection unit={unit} />
+          <BackupSection canExport={workouts.length > 0} />
 
           <AccountSection />
 
           <View className="gap-1 rounded-xl border-2 border-black p-4 dark:border-white">
             <Text className="text-lg font-bold text-black dark:text-white">PaceFlow {Constants.expoConfig?.version}</Text>
             <Text className="text-base text-neutral-700 dark:text-neutral-300">
-              Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup no Diário
+              Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup acima
               exporta e restaura arquivos.
             </Text>
           </View>

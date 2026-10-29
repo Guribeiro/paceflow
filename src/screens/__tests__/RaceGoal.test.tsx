@@ -34,6 +34,9 @@ describe('Prova-alvo na Evolução', () => {
     expect(screen.getByText(/faltam 56 dias \(8 semanas\)/)).toBeOnTheScreen();
     expect(screen.getByText('Meta: 1:45:00 · 4:59/km')).toBeOnTheScreen();
     expect(screen.getByText('Paces para a meta')).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Limiar: .* por quilômetro/)).not.toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Ver paces da meta' }));
+    expect(screen.getByLabelText(/^Limiar: .* por quilômetro/)).toBeOnTheScreen();
     expect(screen.getByText(/Registre um treino forte/)).toBeOnTheScreen();
   });
 
