@@ -25,7 +25,25 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-widgets",
+        {
+          "enableAndroid": true,
+          "widgets": [
+            {
+              "name": "WeekWidget",
+              "displayName": "PaceFlow — Semana",
+              "description": "Km da semana e pace do último treino",
+              "android": {
+                "targetCellWidth": 2,
+                "targetCellHeight": 2,
+                "resizeMode": "both"
+              }
+            }
+          ]
+        }
+      ]
     ],
     "scheme": "paceflow",
     "experiments": {
