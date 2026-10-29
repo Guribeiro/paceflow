@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { KeyboardAware } from '../components/KeyboardAware';
 import { BackupSection } from '../components/BackupSection';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
@@ -129,27 +130,29 @@ export function WorkoutLogScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
-      <FlatList
-        data={workouts}
-        keyExtractor={(w) => w.id}
-        renderItem={({ item }) => <WorkoutItem workout={item} unit={unit} />}
-        contentContainerClassName="gap-3 p-4"
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          <View className="mb-2 gap-3">
-            <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-              Diário
+      <KeyboardAware>
+        <FlatList
+          data={workouts}
+          keyExtractor={(w) => w.id}
+          renderItem={({ item }) => <WorkoutItem workout={item} unit={unit} />}
+          contentContainerClassName="gap-3 p-4"
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <View className="mb-2 gap-3">
+              <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
+                Diário
+              </Text>
+              <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
+              <BackupSection canExport={workouts.length > 0} />
+            </View>
+          }
+          ListEmptyComponent={
+            <Text className="text-lg text-neutral-700 dark:text-neutral-300">
+              Nenhum treino ainda. Calcule o pace na Calculadora e toque em “Salvar treino”.
             </Text>
-            <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
-            <BackupSection canExport={workouts.length > 0} />
-          </View>
-        }
-        ListEmptyComponent={
-          <Text className="text-lg text-neutral-700 dark:text-neutral-300">
-            Nenhum treino ainda. Calcule o pace na Calculadora e toque em “Salvar treino”.
-          </Text>
-        }
-      />
+          }
+        />
+      </KeyboardAware>
     </SafeAreaView>
   );
 }
