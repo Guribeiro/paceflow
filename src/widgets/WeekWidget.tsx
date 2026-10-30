@@ -1,23 +1,28 @@
-import { Column, LinearProgressIndicator, Text } from '@expo/ui/jetpack-compose';
-import { background, cornerRadius, fillMaxSize, fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
+import { Column, Row, Spacer, Text } from '@expo/ui/jetpack-compose';
+import { background, cornerRadius, fillMaxSize, paddingAll, size, width } from '@expo/ui/jetpack-compose/modifiers';
 import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
 import type { WeekWidgetProps } from '../domain/widget-snapshot';
 
 // O componente roda num runtime isolado: sem hooks, estado, async ou
 // referências a constantes deste arquivo. Cores ficam dentro da função e
-// repetem os hex de src/components/ui/palette.ts (surface, ink, muted, brand-ink).
+// repetem os hex de src/components/ui/palette.ts (surface, bar, ink, muted, brand-ink).
 // widget-colors.test.ts confere que continuam iguais.
 // Limitações do Android no SDK 58: tocar no widget não abre o app (só há
-// broadcasts de interação), e cornerRadius só tem efeito no Android 12+.
+// broadcasts de interação), e cornerRadius só tem efeito no Android 12+, assim como
+// a cor do LinearProgressIndicator (no Android 11 ele sai no roxo padrão).
 const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
   'widget';
   const dark = environment.colorScheme === 'dark';
   const surface = dark ? '#1A1A1D' : '#FFFFFF';
-  const surface2 = dark ? '#26262A' : '#E9E9EC';
+  // Blocos vazios da meta: `bar` (≥ 3:1 sobre o fundo) para continuarem visíveis.
+  const bar = dark ? '#6E6E75' : '#8A8A90';
   const fg = dark ? '#FFFFFF' : '#111111';
   const muted = dark ? '#C8C8CC' : '#4A4A4F';
   const accent = dark ? '#FF7A3D' : '#B33A0A';
+  // Meta em 10 blocos de 10%: fundo colorido funciona em qualquer Android, e o
+  // Glance não aceita largura fracionada nem informa o tamanho do widget.
+  const filled = props.goalRatio === null ? 0 : Math.round(Math.min(1, Math.max(0, props.goalRatio)) * 10);
 
   // Centraliza o bloco para o widget ficar equilibrado em qualquer tamanho.
   // O expo-widgets só traduz top/center/bottom para o Glance; spaceBetween
@@ -46,12 +51,14 @@ const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
           </Text>
         ) : null}
         {props.goalRatio !== null ? (
-          <LinearProgressIndicator
-            progress={props.goalRatio}
-            color={accent}
-            trackColor={surface2}
-            modifiers={[fillMaxWidth()]}
-          />
+          <Row>
+            {Array.from({ length: 10 }, (_, i) => (
+              <Row key={i}>
+                {i > 0 ? <Spacer modifiers={[width(4)]} /> : null}
+                <Spacer modifiers={[size(14, 10), background(i < filled ? accent : bar)]} />
+              </Row>
+            ))}
+          </Row>
         ) : null}
       </Column>
     </Column>

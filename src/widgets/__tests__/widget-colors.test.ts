@@ -12,7 +12,7 @@ const { dirname, resolve } = jest.requireActual<{
 const widgetSource = readFileSync(resolve(dirname(expect.getState().testPath ?? ''), '../WeekWidget.tsx'), 'utf8');
 
 describe('cores do widget', () => {
-  it.each(['surface', 'surface2', 'ink', 'muted', 'brandInk'] as const)('usa %s da paleta nos dois temas', (key) => {
+  it.each(['surface', 'bar', 'ink', 'muted', 'brandInk'] as const)('usa %s da paleta nos dois temas', (key) => {
     const pair = `dark ? '${PALETTE.dark[key]}' : '${PALETTE.light[key]}'`;
     expect(widgetSource).toContain(pair);
   });
@@ -54,12 +54,11 @@ describe('cores do widget', () => {
     expect(keyOf(/<Text color=\{(\w+)\}[^>]*>\s*\{props\.lastPace/)).toBe('muted');
   });
 
-  it('usa brandInk na barra de progresso e surface2 no trilho', () => {
-    const bar = widgetSource.match(/<LinearProgressIndicator[\s\S]*?\/>/)?.[0] ?? '';
-    expect({
-      color: colorVars.get(bar.match(/\scolor=\{(\w+)\}/)?.[1] ?? ''),
-      trackColor: colorVars.get(bar.match(/trackColor=\{(\w+)\}/)?.[1] ?? ''),
-    }).toEqual({ color: 'brandInk', trackColor: 'surface2' });
+  it('pinta os blocos da meta com brandInk (feitos) e bar (faltando)', () => {
+    // Barra em blocos de fundo: o LinearProgressIndicator ignora a cor no Android 11.
+    expect(widgetSource).not.toContain('<LinearProgressIndicator');
+    const fill = widgetSource.match(/background\(i < filled \? (\w+) : (\w+)\)/);
+    expect([colorVars.get(fill?.[1] ?? ''), colorVars.get(fill?.[2] ?? '')]).toEqual(['brandInk', 'bar']);
   });
 });
 
