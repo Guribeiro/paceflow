@@ -1,4 +1,5 @@
 import { formatDuration } from './pace/time-format';
+import type { Route } from './route';
 import type { Shoe } from './shoe';
 import { TERRAIN_LABELS, type Workout, splitUnit } from './workout';
 
@@ -10,8 +11,8 @@ export const EXPORT_MIME_TYPES: Record<ExportFormat, string> = {
 };
 
 // v2: tênis (shoes) e workouts[].shoeId. v3: workouts[].splits e splitMeters.
-// O import aceita da v1 à v3.
-const EXPORT_SCHEMA_VERSION = 3;
+// v4: routes (trajeto por id do treino). O import aceita da v1 à v4.
+const EXPORT_SCHEMA_VERSION = 4;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const localDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -87,8 +88,10 @@ export function workoutsToJson(
   workouts: readonly Workout[],
   exportedAt: Date = new Date(),
   shoes: readonly Shoe[] = [],
+  routes: Readonly<Record<string, Route>> = {},
 ): string {
-  const records = activeChronological(workouts).map(({ deletedAt: _deleted, ...rest }) => rest);
+  const active = activeChronological(workouts);
+  const records = active.map(({ deletedAt: _deleted, ...rest }) => rest);
   return JSON.stringify(
     {
       app: 'PaceFlow',
@@ -97,6 +100,8 @@ export function workoutsToJson(
       units: { distance: 'meters', duration: 'seconds' },
       workouts: records,
       shoes: shoes.filter((s) => s.deletedAt === null).map(({ deletedAt: _deleted, ...rest }) => rest),
+      // Só dos treinos exportados.
+      routes: Object.fromEntries(active.flatMap((w) => (routes[w.id] ? [[w.id, routes[w.id]]] : []))),
     },
     null,
     2,

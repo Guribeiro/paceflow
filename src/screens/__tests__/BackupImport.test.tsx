@@ -1,6 +1,7 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
 
 import { pickTextFile } from '../../data/import/pick-text-file';
+import { routeRepository } from '../../data/routes';
 import { workoutRepository } from '../../data/workouts';
 import { workoutsToJson } from '../../domain/export';
 import type { Workout } from '../../domain/workout';
@@ -111,5 +112,34 @@ describe('Backup em Ajustes — importação', () => {
     expect(await screen.findByText('1 treino adicionado, 1 tênis adicionado.')).toBeOnTheScreen();
     expect(screen.getByText('Pegasus')).toBeOnTheScreen();
   });
-});
 
+  it('backup versão 4 restaura os trajetos sem trocar um trajeto já guardado', async () => {
+    const route: [number, number][][] = [
+      [
+        [-23.55, -46.63],
+        [-23.551, -46.631],
+      ],
+    ];
+    const local: [number, number][][] = [[[-22.9, -43.2]]];
+    routeRepository.set('d4', local);
+    mockPickTextFile.mockResolvedValue(
+      workoutsToJson([backupWorkout('d4'), backupWorkout('e5')], new Date(), [], { d4: route, e5: route }),
+    );
+    await pressImport();
+
+    expect(await screen.findByText('2 treinos adicionados.')).toBeOnTheScreen();
+    expect(routeRepository.get('e5')).toEqual(route);
+    expect(routeRepository.get('d4')).toEqual(local);
+  });
+
+  it('backup versão 3 continua restaurando, sem trajetos', async () => {
+    mockPickTextFile.mockResolvedValue(
+      JSON.stringify({ app: 'PaceFlow', schemaVersion: 3, workouts: [backupWorkout('f6')], shoes: [] }),
+    );
+    await pressImport();
+
+    expect(await screen.findByText('1 treino adicionado.')).toBeOnTheScreen();
+    expect(workoutRepository.getById('f6')).toBeDefined();
+    expect(routeRepository.has('f6')).toBe(false);
+  });
+});

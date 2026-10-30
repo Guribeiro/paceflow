@@ -17,6 +17,8 @@ import { storage } from './storage/mmkv';
 export const runRepository = createRunRepository(storage);
 /** Pausa automática nas próximas corridas (por aparelho; ligada por padrão). */
 export const autoPausePreference = createFlagRepository(storage, 'run-auto-pause:v1', true);
+/** Guardar o trajeto das próximas corridas (só no aparelho; ligado por padrão). */
+export const routePreference = createFlagRepository(storage, 'run-route:v1', true);
 
 export const RUN_TASK = 'paceflow-run';
 
@@ -68,13 +70,14 @@ async function stopUpdates() {
 export async function startRunSession(
   splitMeters: number,
   autoPause: boolean,
+  keepRoute: boolean,
   now: () => number = Date.now,
 ): Promise<StartResult> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return permission.canAskAgain ? 'denied' : 'blocked';
   if (!(await Location.hasServicesEnabledAsync())) return 'gps-off';
 
-  runRepository.set(startRun(now(), splitMeters, autoPause));
+  runRepository.set(startRun(now(), splitMeters, autoPause, keepRoute));
   try {
     await startUpdates();
   } catch (e) {

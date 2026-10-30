@@ -1,4 +1,5 @@
 import { type Result, err, ok } from './pace/result';
+import { type Route, parseRoute } from './route';
 import { type Shoe, parseShoeRecord } from './shoe';
 import { type Workout, parseWorkoutRecord } from './workout';
 
@@ -7,11 +8,13 @@ export type ImportError = 'INVALID_JSON' | 'UNSUPPORTED_FORMAT';
 export interface ParsedBackup {
   workouts: Workout[];
   shoes: Shoe[];
+  /** Trajetos válidos, por id de um treino do próprio backup (v4). */
+  routes: Record<string, Route>;
   /** Registros descartados por estarem malformados. */
   invalid: number;
 }
 
-const SUPPORTED_SCHEMA_VERSION = 3;
+const SUPPORTED_SCHEMA_VERSION = 4;
 
 /** Lê um backup gerado por workoutsToJson. Registros inválidos são descartados e contados. */
 export function parseWorkoutsBackup(json: string): Result<ParsedBackup, ImportError> {
@@ -50,5 +53,16 @@ export function parseWorkoutsBackup(json: string): Result<ParsedBackup, ImportEr
     else invalid++;
   }
 
-  return ok({ workouts, shoes, invalid });
+  // Até a v3 não há trajetos; um trajeto inválido é só ignorado (não conta em invalid).
+  const routes: Record<string, Route> = {};
+  const rawRoutes = backup.routes;
+  if (typeof rawRoutes === 'object' && rawRoutes !== null && !Array.isArray(rawRoutes)) {
+    const ids = new Set(workouts.map((w) => w.id));
+    for (const [id, value] of Object.entries(rawRoutes)) {
+      const route = ids.has(id) ? parseRoute(value) : null;
+      if (route) routes[id] = route;
+    }
+  }
+
+  return ok({ workouts, shoes, routes, invalid });
 }

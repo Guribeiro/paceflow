@@ -1,7 +1,12 @@
 /**
  * Gravação de corrida a partir de amostras de GPS: distância, tempo em
- * movimento e parciais. Só números: a rota não é guardada.
+ * movimento, parciais e (se ligado) o trajeto.
  */
+
+import { haversineMeters } from './geo';
+import { ROUTE_MAX_POINTS, ROUTE_STEP_METERS, type Route, parseRoute, routePointCount } from './route';
+
+export { haversineMeters };
 
 export interface RunSample {
   latitude: number;
@@ -53,6 +58,11 @@ export interface RunState {
   anchor: { latitude: number; longitude: number; distanceMeters: number } | null;
   /** Pausada, a última amostra já estava fora do raio de retomada: a próxima também precisa estar. */
   resumePending: boolean;
+  /**
+   * Trajeto em segmentos [lat, lon]; cada retomada abre um segmento, para o
+   * trecho em pausa não virar uma reta. null: guardar trajeto desligado no início.
+   */
+  route: Route | null;
 }
 
 /** Amostras menos precisas que isso são descartadas. */
@@ -76,21 +86,18 @@ export const RESUME_METERS = 10;
 const gpsSpeed = (sample: RunSample): number | null =>
   typeof sample.speed === 'number' && Number.isFinite(sample.speed) && sample.speed >= 0 ? sample.speed : null;
 
-const EARTH_RADIUS_METERS = 6_371_000;
-const rad = (deg: number) => (deg * Math.PI) / 180;
-
-/** Distância em metros entre dois pontos (haversine). */
-export function haversineMeters(
-  a: { latitude: number; longitude: number },
-  b: { latitude: number; longitude: number },
-): number {
-  const dLat = rad(b.latitude - a.latitude);
-  const dLon = rad(b.longitude - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(h)));
+/** Acrescenta o ponto (num segmento novo, se pedido); fora do teto ou perto demais do último, nada muda. */
+function addRoutePoint(route: Route | null, at: { latitude: number; longitude: number }, newSegment: boolean): Route | null {
+  if (route === null || routePointCount(route) >= ROUTE_MAX_POINTS) return route;
+  const point: [number, number] = [at.latitude, at.longitude];
+  const last = route[route.length - 1];
+  if (newSegment || last === undefined) return [...route, [point]];
+  const [lat, lon] = last[last.length - 1];
+  if (haversineMeters({ latitude: lat, longitude: lon }, at) < ROUTE_STEP_METERS) return route;
+  return [...route.slice(0, -1), [...last, point]];
 }
 
-export function startRun(now: number, splitMeters = 1000, autoPause = false): RunState {
+export function startRun(now: number, splitMeters = 1000, autoPause = false, keepRoute = false): RunState {
   return {
     status: 'running',
     startedAt: now,
@@ -106,6 +113,7 @@ export function startRun(now: number, splitMeters = 1000, autoPause = false): Ru
     lastMoveAt: now,
     anchor: null,
     resumePending: false,
+    route: keepRoute ? [] : null,
   };
 }
 
@@ -174,6 +182,7 @@ export function applySamples(state: RunState, samples: readonly RunSample[]): Ru
         anchor: { latitude: sample.latitude, longitude: sample.longitude, distanceMeters: next.distanceMeters },
         lastPoint: { latitude: sample.latitude, longitude: sample.longitude, movingMs: next.movingMs },
         recent: [{ movingMs: next.movingMs, distanceMeters: next.distanceMeters }],
+        route: addRoutePoint(next.route, sample, true),
       };
       continue;
     }
@@ -186,7 +195,7 @@ export function applySamples(state: RunState, samples: readonly RunSample[]): Ru
     if (next.lastPoint === null) {
       // O primeiro ponto (ou o primeiro depois de retomar): a parada conta a partir dele.
       const anchor = { latitude: sample.latitude, longitude: sample.longitude, distanceMeters: next.distanceMeters };
-      next = { ...next, lastPoint: point, lastMoveAt: sample.timestamp, anchor };
+      next = { ...next, lastPoint: point, lastMoveAt: sample.timestamp, anchor, route: addRoutePoint(next.route, sample, true) };
       continue;
     }
     const lastPoint = next.lastPoint;
@@ -242,6 +251,7 @@ export function applySamples(state: RunState, samples: readonly RunSample[]): Ru
       splits,
       lastPoint: point,
       recent,
+      route: addRoutePoint(next.route, sample, false),
     };
   }
   return next;
@@ -291,6 +301,7 @@ export function parseRunState(value: unknown): RunState | null {
     (s.anchor === undefined || s.anchor === null || isPoint(s.anchor, 'distanceMeters')) &&
     (s.lastPoint === null || isPoint(s.lastPoint, 'movingMs')) &&
     (s.resumePending === undefined || typeof s.resumePending === 'boolean') &&
+    (s.route === undefined || s.route === null || parseRoute(s.route) !== null) &&
     // Pausada automaticamente precisa do ponto onde parou.
     (s.autoPaused !== true || (s.status === 'running' && s.lastPoint !== null));
   if (!ok) return null;
@@ -303,5 +314,7 @@ export function parseRunState(value: unknown): RunState | null {
     lastMoveAt: run.lastMoveAt ?? run.resumedAt ?? run.startedAt,
     anchor: run.anchor ?? null,
     resumePending: run.resumePending ?? false,
+    // Corridas de antes do trajeto: sem rota.
+    route: run.route ?? null,
   };
 }

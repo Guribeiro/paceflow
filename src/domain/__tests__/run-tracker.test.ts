@@ -13,6 +13,7 @@ import {
   splitDurations,
   startRun,
 } from '../run-tracker';
+import { ROUTE_MAX_POINTS } from '../route';
 
 const T0 = Date.UTC(2026, 10, 4, 9);
 // ~1 m de latitude em graus.
@@ -761,5 +762,87 @@ describe('pausa automática pela velocidade do GPS', () => {
     // Pela regra antiga (só o raio), a mesma sequência ficaria presa em pausa.
     const withoutSpeed = applySamples(startRun(T0, 1000, true), samples.map((s) => ({ ...s, speed: null })));
     expect(withoutSpeed.autoPaused).toBe(true);
+  });
+});
+
+describe('trajeto', () => {
+  /** Ponto [lat, lon] do trajeto a `meters` ao norte do início. */
+  const pt = (meters: number): [number, number] => [north(meters, 0).latitude, north(meters, 0).longitude];
+  const seg = (...meters: number[]) => meters.map(pt);
+  const withRoute = (autoPause = false) => startRun(T0, 1000, autoPause, true);
+
+  it('só guarda o trajeto quando pedido', () => {
+    expect(startRun(T0).route).toBeNull();
+    expect(startRun(T0, 1000, true).route).toBeNull();
+    expect(withRoute().route).toEqual([]);
+  });
+
+  it('com o trajeto desligado, não grava pontos', () => {
+    expect(applySamples(startRun(T0), straight(0, 30, 4)).route).toBeNull();
+  });
+
+  it('guarda um ponto a cada 10 m ou mais do último guardado', () => {
+    // 4 m/s: 0, 4, 8, 12… só 0, 12, 24 e 36 ficam a 10 m ou mais do anterior.
+    expect(applySamples(withRoute(), straight(0, 10, 4)).route).toEqual([seg(0, 12, 24, 36)]);
+  });
+
+  it('não guarda amostras imprecisas, saltos impossíveis nem a tremida', () => {
+    const state = applySamples(withRoute(), [
+      north(0, 0),
+      north(20, 3, 80), // imprecisa
+      north(500, 4), // salto de 500 m em 4 s
+      north(2, 5), // tremida
+      north(12, 6),
+    ]);
+    expect(state.route).toEqual([seg(0, 12)]);
+  });
+
+  it('retomar a pausa manual abre um segmento novo, sem ligar os dois trechos', () => {
+    let state = applySamples(withRoute(), straight(0, 10, 4));
+    state = resumeRun(pauseRun(state, T0 + 10_000), T0 + 100_000);
+    state = applySamples(state, straight(100, 105, 4, 300));
+    expect(state.route).toEqual([seg(0, 12, 24, 36), seg(300, 312)]);
+  });
+
+  it('retomar da pausa automática abre um segmento novo na amostra que confirmou', () => {
+    // Corre 120 m, para tremendo até pausar, sai a 131 m e confirma a 135 m.
+    let state = applySamples(withRoute(true), straight(0, 30, 4));
+    state = applySamples(
+      state,
+      Array.from({ length: 30 }, (_, i) => north(120 + (i % 2 === 0 ? 2 : -2), 31 + i)),
+    );
+    expect(state.autoPaused).toBe(true);
+    state = applySamples(state, [north(131, 61), north(135, 62), ...straight(63, 72, 4, 139)]);
+    expect(state.route).toEqual([seg(0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120), seg(135, 147, 159, 171)]);
+  });
+
+  it('para de guardar ao chegar no limite de pontos', () => {
+    const almostFull = { ...withRoute(), route: [Array.from({ length: ROUTE_MAX_POINTS - 1 }, () => pt(0))] };
+    const state = applySamples(almostFull, straight(0, 30, 4));
+    // O primeiro ponto (segmento novo) completa o limite; os seguintes ficam de fora.
+    expect(state.route).toEqual([...almostFull.route, seg(0)]);
+    expect(state.distanceMeters).toBeCloseTo(120, 0);
+  });
+
+  describe('parseRunState', () => {
+    const running = applySamples(withRoute(), straight(0, 10, 4));
+
+    it('aceita um trajeto salvo em JSON', () => {
+      expect(parseRunState(JSON.parse(JSON.stringify(running)))).toEqual(running);
+    });
+
+    it('uma corrida salva antes do trajeto fica sem trajeto', () => {
+      const { route: _r, ...old } = running;
+      expect(parseRunState(JSON.parse(JSON.stringify(old)))).toEqual({ ...old, route: null });
+    });
+
+    it.each([
+      ['trajeto como texto', 'rota'],
+      ['segmento vazio', [[]]],
+      ['latitude fora do limite', [[[91, -46.6]]]],
+      ['ponto sem longitude', [[[-23.5]]]],
+    ])('rejeita %s', (_name, route) => {
+      expect(parseRunState({ ...running, route })).toBeNull();
+    });
   });
 });

@@ -3,8 +3,10 @@ import * as Location from 'expo-location';
 import { Alert, Linking } from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
-import { autoPausePreference, discardRunSession, runRepository } from '../../data/run-session';
+import { routeRepository } from '../../data/routes';
+import { autoPausePreference, discardRunSession, routePreference, runRepository } from '../../data/run-session';
 import { workoutRepository } from '../../data/workouts';
+import { simplifyRoute } from '../../domain/route';
 import { type RunSample, applySamples, finishRun, pauseRun, startRun } from '../../domain/run-tracker';
 import { RunScreen } from '../RunScreen';
 
@@ -39,6 +41,7 @@ const permission = (canAskAgain: boolean): Location.LocationPermissionResponse =
 beforeEach(async () => {
   preferencesRepository.setUnit('km');
   autoPausePreference.set(true);
+  routePreference.set(true);
   await discardRunSession();
   workoutRepository.list().forEach((w) => workoutRepository.remove(w.id));
   jest.clearAllMocks();
@@ -396,5 +399,63 @@ describe('Correr: pausa automática', () => {
     expect(runRepository.get()).toMatchObject({ status: 'paused', autoPaused: false, movingMs: 38_000 });
     expect(screen.getByText('⏸ Pausada')).toBeOnTheScreen();
     expect(screen.queryByText('⏸ Pausa automática')).toBeNull();
+  });
+});
+
+describe('Correr: trajeto', () => {
+  /** 2,4 km em linha reta, com o trajeto guardado (um ponto a cada 12 m). */
+  const finishedWithRoute = () =>
+    finishRun(applySamples(startRun(T0, 1000, false, true), straight(0, 600, 4)), T0 + 600_000);
+  const routeImage = () => screen.queryByRole('image', { name: 'Trajeto da corrida, com início e fim marcados' });
+
+  it.each([true, false])('começa guardando o trajeto conforme os Ajustes (%s)', async (keepRoute) => {
+    routePreference.set(keepRoute);
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+    expect(runRepository.get()?.route).toEqual(keepRoute ? [] : null);
+  });
+
+  it('mostra o desenho do trajeto na corrida finalizada', async () => {
+    runRepository.set(finishedWithRoute());
+    await render(<RunScreen />);
+    expect(screen.getByText('Trajeto')).toBeOnTheScreen();
+    expect(routeImage()).toBeOnTheScreen();
+  });
+
+  it('salvar a corrida guarda o trajeto simplificado pelo id do treino', async () => {
+    const run = finishedWithRoute();
+    runRepository.set(run);
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    const [saved] = workoutRepository.list();
+    // Linha reta: só as pontas.
+    expect(routeRepository.get(saved.id)).toEqual(simplifyRoute(run.route!));
+    expect(routeRepository.get(saved.id)?.[0]).toHaveLength(2);
+  });
+
+  it('sem trajeto guardado, não mostra o desenho nem grava trajeto', async () => {
+    runRepository.set(finished());
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    expect(screen.queryByText('Trajeto')).toBeNull();
+    expect(routeImage()).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+    expect(routeRepository.has(workoutRepository.list()[0].id)).toBe(false);
+  });
+
+  it('com um ponto só, não mostra o desenho nem grava trajeto', async () => {
+    // Pausada logo após o primeiro ponto; o resto chega com a corrida parada.
+    const one = { ...finished(), route: [[[-23.5, -46.6]]] as [number, number][][] };
+    runRepository.set(one);
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    expect(routeImage()).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+    expect(routeRepository.has(workoutRepository.list()[0].id)).toBe(false);
   });
 });

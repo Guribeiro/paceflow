@@ -23,7 +23,7 @@ describe('parseWorkoutsBackup', () => {
   it('lê de volta o que a exportação gera', () => {
     const original = [workout(), workout({ id: 'a1', date: '2026-10-30T10:00:00.000Z', rpe: undefined, note: undefined })];
     const result = parseWorkoutsBackup(workoutsToJson(original, new Date()));
-    expect(result).toEqual({ ok: true, value: { workouts: original, shoes: [], invalid: 0 } });
+    expect(result).toEqual({ ok: true, value: { workouts: original, shoes: [], routes: {}, invalid: 0 } });
   });
 
   it('ignora e conta registros inválidos', () => {
@@ -35,12 +35,12 @@ describe('parseWorkoutsBackup', () => {
         'lixo',
       ]),
     );
-    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], invalid: 3 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], routes: {}, invalid: 3 } });
   });
 
   it('rejeita ids que não são seguros para usar como chave', () => {
     const result = parseWorkoutsBackup(backup([workout({ id: 'a\\b' }), workout({ id: '' }), workout({ id: 'x'.repeat(65) })]));
-    expect(result).toEqual({ ok: true, value: { workouts: [], shoes: [], invalid: 3 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [], shoes: [], routes: {}, invalid: 3 } });
   });
 
   it('ignora deletedAt vindo do arquivo: importar nunca remove', () => {
@@ -60,7 +60,7 @@ describe('parseWorkoutsBackup', () => {
   it.each([
     ['app diferente', backup([], { app: 'Strava' })],
     ['sem app', JSON.stringify({ schemaVersion: 1, workouts: [] })],
-    ['versão futura', backup([], { schemaVersion: 4 })],
+    ['versão futura', backup([], { schemaVersion: 5 })],
     ['workouts não é lista', backup([], { workouts: {} })],
   ])('UNSUPPORTED_FORMAT: %s', (_label, input) => {
     expect(parseWorkoutsBackup(input)).toEqual({ ok: false, error: 'UNSUPPORTED_FORMAT' });
@@ -84,7 +84,7 @@ describe('parseWorkoutsBackup com tênis (versão 2)', () => {
     );
     expect(result).toEqual({
       ok: true,
-      value: { workouts: [workout({ shoeId: 'shoe-1' })], shoes: [{ ...shoe, deletedAt: null }], invalid: 1 },
+      value: { workouts: [workout({ shoeId: 'shoe-1' })], shoes: [{ ...shoe, deletedAt: null }], routes: {}, invalid: 1 },
     });
   });
 
@@ -100,18 +100,18 @@ describe('parseWorkoutsBackup com parciais (versão 3)', () => {
 
   it('lê de volta as parciais que a exportação gera', () => {
     const result = parseWorkoutsBackup(workoutsToJson([withSplits], new Date()));
-    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], invalid: 0 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], routes: {}, invalid: 0 } });
   });
 
   it('aceita backup versão 3 com parciais em milhas', () => {
     const mile = workout({ splits: [402], splitMeters: 1609.344 });
     const result = parseWorkoutsBackup(backup([mile], { schemaVersion: 3, shoes: [] }));
-    expect(result).toEqual({ ok: true, value: { workouts: [mile], shoes: [], invalid: 0 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [mile], shoes: [], routes: {}, invalid: 0 } });
   });
 
   it('backup versão 2 continua aceito, sem parciais', () => {
     const result = parseWorkoutsBackup(backup([workout()], { schemaVersion: 2, shoes: [] }));
-    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], invalid: 0 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], routes: {}, invalid: 0 } });
     expect(result.ok && result.value.workouts[0]).not.toHaveProperty('splits');
   });
 
@@ -128,6 +128,64 @@ describe('parseWorkoutsBackup com parciais (versão 3)', () => {
         { schemaVersion: 3 },
       ),
     );
-    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], invalid: 4 } });
+    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], routes: {}, invalid: 4 } });
+  });
+});
+
+describe('parseWorkoutsBackup com trajetos (versão 4)', () => {
+  const route: [number, number][][] = [
+    [
+      [-23.55, -46.63],
+      [-23.551, -46.631],
+    ],
+    [[-23.552, -46.632]],
+  ];
+
+  it('lê de volta os trajetos que a exportação gera', () => {
+    const original = workout();
+    const result = parseWorkoutsBackup(workoutsToJson([original], new Date(), [], { [original.id]: route }));
+    expect(result).toEqual({
+      ok: true,
+      value: { workouts: [original], shoes: [], routes: { [original.id]: route }, invalid: 0 },
+    });
+  });
+
+  it('backup versão 3 continua aceito, sem trajetos', () => {
+    const result = parseWorkoutsBackup(backup([workout()], { schemaVersion: 3, shoes: [] }));
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], routes: {}, invalid: 0 } });
+  });
+
+  it('ignora trajetos de treinos que não estão no backup ou que foram descartados', () => {
+    const result = parseWorkoutsBackup(
+      backup([workout(), { ...workout({ id: 'b2' }), distanceMeters: -1 }], {
+        schemaVersion: 4,
+        routes: { [workout().id]: route, b2: route, orfao: route },
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      value: { workouts: [workout()], shoes: [], routes: { [workout().id]: route }, invalid: 1 },
+    });
+  });
+
+  it('descarta trajetos inválidos sem contar como registro inválido', () => {
+    const ok = workout({ id: 'a1' });
+    const result = parseWorkoutsBackup(
+      backup([ok, workout({ id: 'b2' }), workout({ id: 'c3' }), workout({ id: 'd4' })], {
+        schemaVersion: 4,
+        routes: { a1: route, b2: [[[91, 0]]], c3: [[]], d4: 'lixo' },
+      }),
+    );
+    expect(result.ok && result.value.routes).toEqual({ a1: route });
+    expect(result.ok && result.value.invalid).toBe(0);
+  });
+
+  it.each([
+    ['lista', []],
+    ['texto', 'lixo'],
+    ['null', null],
+  ])('routes que não é objeto (%s) vira nenhum trajeto', (_label, routes) => {
+    const result = parseWorkoutsBackup(backup([workout()], { schemaVersion: 4, routes }));
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], routes: {}, invalid: 0 } });
   });
 });

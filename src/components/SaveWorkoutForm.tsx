@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
 
+import { routeRepository } from '../data/routes';
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain, type Workout } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
 import { shoeRepository } from '../data/shoes';
 import { newRecords, personalRecords } from '../domain/personal-records';
+import { type Route, routePointCount, simplifyRoute } from '../domain/route';
 import { suggestedShoeId } from '../domain/shoe-mileage';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
@@ -25,6 +27,8 @@ interface Props {
   initialNote?: string;
   /** Parciais da corrida gravada pelo GPS, salvas junto com o treino. */
   splits?: Pick<Workout, 'splits' | 'splitMeters'>;
+  /** Trajeto da corrida gravada; guardado só no aparelho, pelo id do treino. */
+  route?: Route | null;
   /** Depois de salvar, com a comemoração de recorde (se houver). */
   onSaved?: (celebration: { text: string; spoken: string } | null) => void;
 }
@@ -35,6 +39,7 @@ export function SaveWorkoutForm({
   initialTerrain,
   initialNote = '',
   splits,
+  route,
   onSaved,
 }: Props) {
   const [terrain, setTerrain] = useState<Terrain | undefined>(initialTerrain);
@@ -78,6 +83,7 @@ export function SaveWorkoutForm({
       ...splits,
     });
     if (result.ok) {
+      if (route && routePointCount(route) >= 2) routeRepository.set(result.value.id, simplifyRoute(route));
       const message = recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before);
       setStatus('saved');
       setCelebration(message);

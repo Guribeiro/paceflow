@@ -3,6 +3,7 @@ import { Linking, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
+import { RouteMap } from '../components/RouteMap';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { SplitList } from '../components/SplitList';
 import { Button } from '../components/ui/Button';
@@ -25,8 +26,10 @@ import {
 } from '../data/run-session';
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
 import { type RunState, currentPace, elapsedMs, isAutoPaused, splitDurations } from '../domain/run-tracker';
+import { routePointCount } from '../domain/route';
 import { splitUnit } from '../domain/workout';
 import { useAutoPause } from '../hooks/useAutoPause';
+import { useKeepRoute } from '../hooks/useKeepRoute';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useRunSession } from '../hooks/useRunSession';
 
@@ -157,6 +160,11 @@ function FinishedRun({
           className=""
         />
       ) : null}
+      {run.route && routePointCount(run.route) >= 2 ? (
+        <Card gap={3} title="Trajeto" icon="route">
+          <RouteMap route={run.route} />
+        </Card>
+      ) : null}
       {splits.length > 0 ? (
         <Card gap={0} title="Parciais" icon="flag">
           <SplitList splits={splits} unit={splitUnit(run.splitMeters)} />
@@ -169,6 +177,7 @@ function FinishedRun({
           durationSeconds={seconds}
           initialTerrain="rua"
           splits={splits.length > 0 ? { splits: splits.map(roundSplit), splitMeters: run.splitMeters } : undefined}
+          route={run.route}
           onSaved={onSaved}
         />
       ) : (
@@ -183,7 +192,7 @@ function FinishedRun({
         onPress={() =>
           confirmDestructive({
             title: 'Descartar a corrida?',
-            message: 'Tempo, distância e parciais desta corrida serão apagados.',
+            message: 'Tempo, distância, parciais e trajeto desta corrida serão apagados.',
             confirmLabel: 'Descartar',
             onConfirm: () => void discardRunSession(),
           })
@@ -196,6 +205,7 @@ function FinishedRun({
 export function RunScreen() {
   const [unit] = usePreferredUnit();
   const [autoPause] = useAutoPause();
+  const [keepRoute] = useKeepRoute();
   const { run, now } = useRunSession();
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -206,7 +216,7 @@ export function RunScreen() {
     setError(null);
     setSaved(null);
     try {
-      const result = await startRunSession(SPLIT_METERS[unit], autoPause);
+      const result = await startRunSession(SPLIT_METERS[unit], autoPause, keepRoute);
       if (result !== 'started') setError(START_ERRORS[result]);
     } catch {
       setError('Não foi possível iniciar o GPS. Tente de novo.');

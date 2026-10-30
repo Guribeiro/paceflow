@@ -1,13 +1,15 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
 
 import { preferencesRepository } from '../../data/preferences';
-import { autoPausePreference } from '../../data/run-session';
+import { autoPausePreference, routePreference } from '../../data/run-session';
+import { storage } from '../../data/storage/mmkv';
 import { SettingsScreen } from '../SettingsScreen';
 
 beforeEach(() => {
   preferencesRepository.setTheme('system');
   preferencesRepository.setUnit('km');
   autoPausePreference.set(true);
+  routePreference.set(true);
 });
 
 describe('SettingsScreen', () => {
@@ -58,5 +60,36 @@ describe('SettingsScreen', () => {
     autoPausePreference.set(false);
     await render(<SettingsScreen />);
     expect(screen.getByRole('switch', { name: 'Pausa automática' })).not.toBeChecked();
+  });
+
+  it('liga e desliga guardar o trajeto', async () => {
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    const toggle = () => screen.getByRole('switch', { name: 'Guardar trajeto' });
+    expect(toggle()).toBeChecked();
+    expect(screen.getByText('O desenho do percurso fica só neste aparelho.')).toBeOnTheScreen();
+
+    await user.press(toggle());
+    expect(routePreference.get()).toBe(false);
+    expect(toggle()).not.toBeChecked();
+    // Não mexe na pausa automática.
+    expect(autoPausePreference.get()).toBe(true);
+
+    await user.press(toggle());
+    expect(routePreference.get()).toBe(true);
+    expect(toggle()).toBeChecked();
+  });
+
+  it('mostra guardar o trajeto desligado quando foi desligado antes', async () => {
+    routePreference.set(false);
+    await render(<SettingsScreen />);
+    expect(screen.getByRole('switch', { name: 'Guardar trajeto' })).not.toBeChecked();
+  });
+
+  it('guardar o trajeto vem ligado num aparelho que nunca mexeu nisso', async () => {
+    storage.remove('run-route:v1');
+    expect(routePreference.get()).toBe(true);
+    await render(<SettingsScreen />);
+    expect(screen.getByRole('switch', { name: 'Guardar trajeto' })).toBeChecked();
   });
 });

@@ -13,6 +13,7 @@ import { WeeklyGoalSetting } from '../components/WeeklyGoalSetting';
 import type { ThemePreference } from '../data/repositories/preferences-repository';
 import type { DistanceUnit } from '../domain/pace';
 import { useAutoPause } from '../hooks/useAutoPause';
+import { useKeepRoute } from '../hooks/useKeepRoute';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { useWorkouts } from '../hooks/useWorkouts';
@@ -35,6 +36,7 @@ export function SettingsScreen() {
   const [theme, setTheme] = useThemePreference();
   const [unit, setUnit] = usePreferredUnit();
   const [autoPause, setAutoPause] = useAutoPause();
+  const [keepRoute, setKeepRoute] = useKeepRoute();
   const workouts = useWorkouts();
 
   return (
@@ -56,6 +58,12 @@ export function SettingsScreen() {
               description="Na aba Correr, o tempo para quando você fica parado (num semáforo, por exemplo) e volta quando você anda."
               value={autoPause}
               onChange={setAutoPause}
+            />
+            <Toggle
+              label="Guardar trajeto"
+              description="O desenho do percurso fica só neste aparelho."
+              value={keepRoute}
+              onChange={setKeepRoute}
             />
           </Card>
           <VoiceSection unit={unit} />

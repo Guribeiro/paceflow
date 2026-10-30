@@ -1,5 +1,6 @@
 import { type ImportError, parseWorkoutsBackup } from '../../domain/import';
 import type { ImportSummary } from '../repositories/workout-repository';
+import { routeRepository } from '../routes';
 import { shoeRepository } from '../shoes';
 import { workoutRepository } from '../workouts';
 import { pickTextFile } from './pick-text-file';
@@ -21,5 +22,7 @@ export async function importWorkoutsFromFile(): Promise<ImportOutcome> {
   // Tênis antes dos treinos, para que os shoeId importados já tenham dono.
   const shoes = shoeRepository.importShoes(parsed.value.shoes);
   const summary = workoutRepository.importWorkouts(parsed.value.workouts);
+  // Depois dos treinos; um trajeto já guardado no aparelho fica.
+  routeRepository.importRoutes(parsed.value.routes);
   return { status: 'done', summary, shoesAdded: shoes.added, invalid: parsed.value.invalid };
 }

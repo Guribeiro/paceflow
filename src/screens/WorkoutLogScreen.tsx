@@ -4,8 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
+import { RouteMap } from '../components/RouteMap';
 import { SplitList } from '../components/SplitList';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
+import { routeRepository } from '../data/routes';
 import { workoutRepository } from '../data/workouts';
 import {
   type DistanceUnit,
@@ -43,7 +45,10 @@ function confirmRemove(workout: Workout, unit: DistanceUnit) {
     title: 'Excluir treino?',
     message: `${formatDistance(workout.distanceMeters, unit)} ${unit} em ${formatDuration(workout.durationSeconds)}`,
     confirmLabel: 'Excluir',
-    onConfirm: () => workoutRepository.remove(workout.id),
+    onConfirm: () => {
+      workoutRepository.remove(workout.id);
+      routeRepository.remove(workout.id);
+    },
   });
 }
 
@@ -107,6 +112,12 @@ function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: D
   );
 }
 
+/** Lido só quando o "Ver trajeto" abre; um trajeto corrompido não desenha nada. */
+function SavedRoute({ workoutId }: { workoutId: string }) {
+  const route = routeRepository.get(workoutId);
+  return route ? <RouteMap route={route} /> : null;
+}
+
 function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
   const [editing, setEditing] = useState(false);
 
@@ -120,6 +131,11 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
           {workout.splits && workout.splitMeters ? (
             <Disclosure showLabel="Ver parciais" hideLabel="Ocultar parciais">
               <SplitList splits={workout.splits} unit={splitUnit(workout.splitMeters)} />
+            </Disclosure>
+          ) : null}
+          {routeRepository.has(workout.id) ? (
+            <Disclosure showLabel="Ver trajeto" hideLabel="Ocultar trajeto">
+              <SavedRoute workoutId={workout.id} />
             </Disclosure>
           ) : null}
           <View className="flex-row flex-wrap justify-end gap-6">

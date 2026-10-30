@@ -89,7 +89,7 @@ describe('workoutsToJson', () => {
 
     expect(parsed).toEqual({
       app: 'PaceFlow',
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: '2026-10-29T12:00:00.000Z',
       units: { distance: 'meters', duration: 'seconds' },
       workouts: [
@@ -105,7 +105,23 @@ describe('workoutsToJson', () => {
         },
       ],
       shoes: [],
+      routes: {},
     });
+  });
+
+  it('leva os trajetos só dos treinos exportados', () => {
+    const active = workout(local(2026, 10, 29));
+    const removed = workout(local(2026, 10, 28), { deletedAt: local(2026, 10, 29).toISOString() });
+    const route: [number, number][][] = [
+      [
+        [-23.55, -46.63],
+        [-23.551, -46.631],
+      ],
+    ];
+    const parsed = JSON.parse(
+      workoutsToJson([active, removed], new Date(), [], { [active.id]: route, [removed.id]: route, orfao: route }),
+    );
+    expect(parsed.routes).toEqual({ [active.id]: route });
   });
 
   it('leva as parciais e o tamanho delas no treino', () => {
