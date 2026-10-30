@@ -16,7 +16,7 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
 import { Disclosure } from '../components/ui/Disclosure';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { tabular } from '../components/ui/typography';
+import { display } from '../components/ui/typography';
 
 const WEEKS = 12;
 
@@ -32,7 +32,7 @@ function StatTile({ label, value, detail }: { label: string; value: string; deta
       <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</Text>
       <Text
         className="text-2xl font-bold text-black dark:text-white"
-        style={tabular}
+        style={display}
         maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
       >
         {value}
@@ -79,7 +79,7 @@ export function TrendsScreen() {
                 <Text
                   accessibilityLiveRegion="polite"
                   className="text-base font-semibold text-black dark:text-white"
-                  style={tabular}
+                  style={display}
                 >
                   {selected === WEEKS - 1 ? 'Esta semana' : `Semana de ${weekLabel(week.weekStart)}`}:{' '}
                   {formatDistance(week.distanceMeters, unit)} {unit} · {week.count}{' '}
@@ -125,7 +125,7 @@ export function TrendsScreen() {
                       }`}
                     >
                       <Text className="text-base text-black dark:text-white">{weekLabel(w.weekStart)}</Text>
-                      <Text className="text-base font-semibold text-black dark:text-white" style={tabular}>
+                      <Text className="text-base font-semibold text-black dark:text-white" style={display}>
                         {formatDistance(w.distanceMeters, unit)} {unit} · {w.count} {w.count === 1 ? 'treino' : 'treinos'}
                       </Text>
                     </View>

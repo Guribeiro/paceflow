@@ -28,7 +28,7 @@ import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { SectionHeader } from './ui/SectionHeader';
-import { tabular } from './ui/typography';
+import { display, tabular } from './ui/typography';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
 
@@ -74,7 +74,7 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
               className="min-w-20 flex-1 items-center gap-1 p-3"
             >
               <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{distanceMeters} m</Text>
-              <Text className="text-2xl font-bold text-black dark:text-white" style={tabular}>
+              <Text className="text-2xl font-bold text-black dark:text-white" style={display}>
                 {formatDuration(seconds)}
               </Text>
             </View>
@@ -218,7 +218,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
 
       {stats && repMeters ? (
         <View accessible accessibilityLiveRegion="polite" className="gap-1">
-          <Text className="text-lg font-bold text-black dark:text-white" style={tabular}>
+          <Text className="text-lg font-bold text-black dark:text-white" style={display}>
             Média {formatDuration(stats.average)} · melhor {formatDuration(stats.best)} · pior {formatDuration(stats.worst)}
           </Text>
           <Text className="text-base text-neutral-700 dark:text-neutral-300" style={tabular}>

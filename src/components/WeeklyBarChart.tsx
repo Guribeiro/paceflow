@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { type DistanceUnit, distanceInUnit, formatDistance } from '../domain/pace';
 import type { WeekTotal } from '../domain/workout-trends';
+import { display } from './ui/typography';
 
 // Igual a h-44 (176 px): a altura das barras é calculada sobre ele.
 const CHART_HEIGHT = 176;
@@ -67,7 +68,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
             style={{ bottom: (goalMeters / scaleMax) * CHART_HEIGHT }}
             className="absolute left-0 right-0 border-t-2 border-dashed border-black dark:border-white"
           >
-            <Text className="self-end bg-white px-1 text-sm font-bold text-black dark:bg-black dark:text-white">
+            <Text className="self-end bg-white px-1 text-sm font-bold text-black dark:bg-black dark:text-white" style={display}>
               Meta {formatDistance(goalMeters, unit)} {unit}
             </Text>
           </View>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#000000" />
+  <g transform="translate(153.60000000000002 153.60000000000002) scale(7.167999999999999)">
+  <g transform="translate(50 50) skewX(-10) translate(-50.5 -50)">
+    <path fill="#ffffff" fill-rule="evenodd" d="
+      M40 10 H70 A23 23 0 0 1 70 56 H58 V90 H40 Z
+      M58 28 H70 A5 5 0 0 1 70 38 H58 Z" />
+    <rect fill="#ffffff" x="6"  y="12" width="26" height="9" rx="4.5" />
+    <rect fill="#ffffff" x="13" y="28.5" width="19" height="9" rx="4.5" />
+    <rect fill="#ffffff" x="20" y="45" width="12" height="9" rx="4.5" />
+  </g></g>
+</svg>

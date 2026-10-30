@@ -9,7 +9,7 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { ProgressBar } from './ui/ProgressBar';
 import { SectionHeader } from './ui/SectionHeader';
-import { tabular } from './ui/typography';
+import { display, tabular } from './ui/typography';
 
 const UPCOMING = 4;
 
@@ -49,7 +49,7 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
         accessibilityValue={{ min: 0, max: 100, now: Math.round(ratio * 100) }}
         className="gap-2"
       >
-        <Text className="text-2xl font-bold text-white dark:text-black" style={tabular}>
+        <Text className="text-2xl font-bold text-white dark:text-black" style={display}>
           {done}
         </Text>
         <ProgressBar ratio={ratio} inverted />
@@ -118,7 +118,7 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
               <Text className="text-base text-black dark:text-white">
                 {weekLabel(week.weekStart)} · {PHASE_LABEL[week.phase]}
               </Text>
-              <Text className="text-base font-semibold text-black dark:text-white" style={tabular}>
+              <Text className="text-base font-semibold text-black dark:text-white" style={display}>
                 {formatDistance(week.targetMeters, unit)} {unit}
                 {week.isRaceWeek ? ' · prova' : ` · longão ${formatDistance(week.longRunMeters, unit)}`}
               </Text>

@@ -6,7 +6,7 @@ import type { WeekSummary } from '../domain/workout-summary';
 import { BIG_NUMBER_MAX_SCALE } from '../hooks/useLargeText';
 import { Card } from './ui/Card';
 import { ProgressBar } from './ui/ProgressBar';
-import { tabular } from './ui/typography';
+import { display } from './ui/typography';
 
 interface Props {
   summary: WeekSummary;
@@ -32,13 +32,13 @@ export function WeekSummaryCard({ summary, unit, goalMeters }: Props) {
         <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Esta semana</Text>
         <Text
           className="text-5xl font-bold text-white dark:text-black"
-          style={tabular}
+          style={display}
           maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
         >
           {distance}
           <Text className="text-2xl"> {unit}</Text>
         </Text>
-        <Text className="text-lg font-semibold text-neutral-200 dark:text-neutral-800" style={tabular}>
+        <Text className="text-lg font-semibold text-neutral-200 dark:text-neutral-800" style={display}>
           {summary.count} {treinos} · {formatDuration(summary.durationSeconds)}
         </Text>
       </View>
@@ -63,7 +63,7 @@ function GoalProgress({ distanceMeters, goalMeters, unit }: { distanceMeters: nu
       accessibilityValue={{ min: 0, max: 100, now: Math.min(100, progress.percent) }}
     >
       <ProgressBar ratio={progress.ratio} inverted />
-      <Text className="text-base font-semibold text-neutral-200 dark:text-neutral-800" style={tabular}>
+      <Text className="text-base font-semibold text-neutral-200 dark:text-neutral-800" style={display}>
         {text}
       </Text>
     </View>

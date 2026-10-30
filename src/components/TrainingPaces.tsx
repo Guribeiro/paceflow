@@ -9,7 +9,7 @@ import {
   spokenDuration,
   trainingPaces,
 } from '../domain/pace';
-import { tabular } from './ui/typography';
+import { display, tabular } from './ui/typography';
 
 const ZONES: { zone: TrainingZone; label: string; hint: string; showLap?: boolean }[] = [
   { zone: 'easy', label: 'Leve / longão', hint: 'Conversa fácil; a maior parte da semana' },
@@ -67,7 +67,7 @@ export function TrainingPaces({ distanceKm, durationSeconds, unit }: Props) {
                 <Text className="text-sm text-neutral-700 dark:text-neutral-300">{hint}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-xl font-bold text-black dark:text-white" style={tabular}>
+                <Text className="text-xl font-bold text-black dark:text-white" style={display}>
                   {describe(range)}/{unit}
                 </Text>
                 {lap ? (

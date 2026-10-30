@@ -24,7 +24,7 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { confirmDestructive } from '../components/ui/confirm';
-import { tabular } from '../components/ui/typography';
+import { display } from '../components/ui/typography';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'short',
@@ -74,11 +74,11 @@ function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: D
         </Text>
       </View>
       <View className="flex-row flex-wrap items-end justify-between gap-x-4">
-        <Text className="text-3xl font-bold text-black dark:text-white" style={tabular}>
+        <Text className="text-3xl font-bold text-black dark:text-white" style={display}>
           {formatDuration(pace)}
           <Text className="text-lg font-semibold">/{unit}</Text>
         </Text>
-        <Text className="text-lg font-semibold text-black dark:text-white" style={tabular}>
+        <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
           {distance} {unit} · {formatDuration(workout.durationSeconds)}
         </Text>
       </View>

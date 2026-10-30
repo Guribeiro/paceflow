@@ -6,7 +6,7 @@ import { type PersonalRecord, personalRecords } from '../domain/personal-records
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from './ui/Card';
 import { SectionHeader } from './ui/SectionHeader';
-import { tabular } from './ui/typography';
+import { display } from './ui/typography';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
@@ -54,7 +54,7 @@ export function PersonalRecordsCard({ unit }: { unit: DistanceUnit }) {
               className="flex-row flex-wrap items-baseline justify-between gap-x-4"
             >
               <Text className="text-lg font-bold text-black dark:text-white">{r.label}</Text>
-              <Text className="text-lg font-semibold text-black dark:text-white" style={tabular}>
+              <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
                 {formatDuration(r.seconds)} · {pace}/{unit} · {date}
               </Text>
             </View>

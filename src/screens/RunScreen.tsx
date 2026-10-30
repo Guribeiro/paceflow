@@ -9,7 +9,7 @@ import { ButtonRow } from '../components/ui/ButtonRow';
 import { Card } from '../components/ui/Card';
 import { confirmDestructive } from '../components/ui/confirm';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { tabular } from '../components/ui/typography';
+import { display, tabular } from '../components/ui/typography';
 import {
   type StartResult,
   discardRunSession,
@@ -46,7 +46,7 @@ function BigNumber({ label, value, suffix, spoken }: { label: string; value: str
       <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{label}</Text>
       <Text
         className="text-5xl font-bold text-black dark:text-white"
-        style={tabular}
+        style={display}
         maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
       >
         {value}
@@ -73,7 +73,7 @@ function SplitList({ run }: { run: RunState }) {
           <Text className="text-lg text-black dark:text-white">
             {i + 1} {unit}
           </Text>
-          <Text className="text-lg font-semibold text-black dark:text-white" style={tabular}>
+          <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
             {formatDuration(seconds)}
           </Text>
         </View>

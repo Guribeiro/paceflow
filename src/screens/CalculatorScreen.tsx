@@ -23,7 +23,7 @@ import {
 } from '../domain/pace';
 import { Card } from '../components/ui/Card';
 import { Disclosure } from '../components/ui/Disclosure';
-import { tabular } from '../components/ui/typography';
+import { display } from '../components/ui/typography';
 
 const INCOMPLETE = 'Informe distância e tempo válidos.';
 
@@ -132,7 +132,7 @@ export function CalculatorScreen() {
                   <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Pace</Text>
                   <Text
                     className="text-5xl font-bold text-white dark:text-black"
-                    style={tabular}
+                    style={display}
                     maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
                   >
                     {mainPace !== undefined ? formatDuration(mainPace) : '--:--'}
@@ -152,7 +152,7 @@ export function CalculatorScreen() {
                   <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">Velocidade</Text>
                   <Text
                     className="text-5xl font-bold text-black dark:text-white"
-                    style={tabular}
+                    style={display}
                     maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
                   >
                     {mainSpeed !== undefined ? mainSpeed.toFixed(1).replace('.', ',') : '--'}

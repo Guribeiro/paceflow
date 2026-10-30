@@ -1,7 +1,7 @@
 import { Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { usePlaceholderColor } from './placeholder-color';
-import { tabular } from './ui/typography';
+import { display } from './ui/typography';
 
 interface Props extends Pick<
     TextInputProps,
@@ -33,7 +33,7 @@ export function Field({ label, error, fill = true, variant = 'number', showError
           isNumber ? 'min-h-14 text-2xl font-bold' : 'min-h-12 text-lg'
         } ${error ? 'border-red-700 dark:border-red-400' : 'border-black dark:border-white'}`}
         placeholderTextColor={placeholderColor}
-        style={isNumber ? tabular : undefined}
+        style={isNumber ? display : undefined}
       />
       {error && showErrorText ? <Text className="mt-1 text-base font-semibold text-red-700 dark:text-red-400">{error}</Text> : null}
     </View>
