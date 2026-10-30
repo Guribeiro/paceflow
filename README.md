@@ -85,3 +85,7 @@ npm test           # Jest
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint, sem avisos
 ```
+
+## Licença
+
+[MIT](LICENSE)

@@ -67,6 +67,7 @@
     "db:types": "supabase gen types typescript --local > src/data/sync/database.types.ts"
   },
   "private": true,
+  "license": "MIT",
   "jest": {
     "preset": "jest-expo",
     "setupFiles": [
