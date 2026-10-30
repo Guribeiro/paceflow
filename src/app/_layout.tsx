@@ -7,7 +7,10 @@ import { useApplyTheme } from '../hooks/useApplyTheme';
 import { useAutoSync } from '../hooks/useAutoSync';
 import { useReminderSync } from '../hooks/useReminderSync';
 import { useRunRecovery } from '../hooks/useRunRecovery';
+import { applyStoredTheme } from '../hooks/useThemePreference';
 import { useWidgetSync } from '../hooks/useWidgetSync';
+
+applyStoredTheme();
 
 export default function RootLayout() {
   useApplyTheme();
