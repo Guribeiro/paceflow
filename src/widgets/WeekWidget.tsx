@@ -5,14 +5,19 @@ import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 import type { WeekWidgetProps } from '../domain/widget-snapshot';
 
 // O componente roda num runtime isolado: sem hooks, estado, async ou
-// referências a constantes deste arquivo. Cores ficam dentro da função.
+// referências a constantes deste arquivo. Cores ficam dentro da função e
+// repetem os hex de src/components/ui/palette.ts (surface, ink, muted, brand-ink).
+// widget-colors.test.ts confere que continuam iguais.
 // Limitações do Android no SDK 58: tocar no widget não abre o app (só há
 // broadcasts de interação), e cornerRadius só tem efeito no Android 12+.
 const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
   'widget';
   const dark = environment.colorScheme === 'dark';
-  const fg = dark ? '#ffffff' : '#000000';
-  const muted = dark ? '#d4d4d4' : '#404040';
+  const surface = dark ? '#1A1A1D' : '#FFFFFF';
+  const surface2 = dark ? '#26262A' : '#E9E9EC';
+  const fg = dark ? '#FFFFFF' : '#111111';
+  const muted = dark ? '#C8C8CC' : '#4A4A4F';
+  const accent = dark ? '#FF7A3D' : '#B33A0A';
 
   // Centraliza o bloco para o widget ficar equilibrado em qualquer tamanho.
   // O expo-widgets só traduz top/center/bottom para o Glance; spaceBetween
@@ -20,9 +25,9 @@ const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
   return (
     <Column
       verticalArrangement="center"
-      modifiers={[fillMaxSize(), cornerRadius(16), background(dark ? '#000000' : '#ffffff'), paddingAll(14)]}
+      modifiers={[fillMaxSize(), cornerRadius(16), background(surface), paddingAll(14)]}
     >
-      <Text color={muted} maxLines={1} style={{ fontSize: 13, fontWeight: '600' }}>
+      <Text color={accent} maxLines={1} style={{ fontSize: 13, fontWeight: 'bold' }}>
         {props.weekLabel}
       </Text>
       <Text color={fg} maxLines={1} style={{ fontSize: 36, fontWeight: 'bold' }}>
@@ -43,8 +48,8 @@ const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
         {props.goalRatio !== null ? (
           <LinearProgressIndicator
             progress={props.goalRatio}
-            color={fg}
-            trackColor={dark ? '#525252' : '#d4d4d4'}
+            color={accent}
+            trackColor={surface2}
             modifiers={[fillMaxWidth()]}
           />
         ) : null}
