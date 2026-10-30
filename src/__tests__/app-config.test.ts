@@ -54,6 +54,27 @@ describe('variantes do app', () => {
   });
 });
 
+describe('permissões do Android', () => {
+  const blocked = [
+    'android.permission.SYSTEM_ALERT_WINDOW',
+    'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.WRITE_EXTERNAL_STORAGE',
+  ];
+
+  it('bloqueia as permissões que o app não usa (sobreposição e armazenamento externo)', () => {
+    expect([...(base.android?.blockedPermissions ?? [])].sort()).toEqual([...blocked].sort());
+  });
+
+  it('a variante development mantém o bloqueio', () => {
+    expect(withVariant(base, 'development').android?.blockedPermissions).toEqual(base.android?.blockedPermissions);
+  });
+
+  it('nenhuma permissão bloqueada é pedida em android.permissions', () => {
+    const requested = base.android?.permissions ?? [];
+    expect(requested.filter((p) => blocked.includes(p))).toEqual([]);
+  });
+});
+
 describe('default export', () => {
   const original = process.env.APP_VARIANT;
   const context = { config: base } as unknown as ConfigContext;

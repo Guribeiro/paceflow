@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { ScrollView, Text } from 'react-native';
+import { Linking, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
@@ -17,9 +17,13 @@ import { useKeepRoute } from '../hooks/useKeepRoute';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { useWorkouts } from '../hooks/useWorkouts';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Toggle } from '../components/ui/Toggle';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
+
+/** Política de privacidade publicada no GitHub Pages (docs/ do repositório). */
+export const PRIVACY_POLICY_URL = 'https://guribeiro.github.io/paceflow/privacidade.html';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; spoken: string }[] = [
   { value: 'system', label: 'Sistema', spoken: 'Tema do sistema' },
@@ -77,6 +81,12 @@ export function SettingsScreen() {
               Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup acima
               exporta e restaura arquivos.
             </Text>
+            <Button
+              label="Política de privacidade"
+              variant="link"
+              accessibilityHint="Abre no navegador"
+              onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+            />
           </Card>
         </ScrollView>
       </KeyboardAware>

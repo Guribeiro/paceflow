@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { isCloudConfigured, sendLoginCode, signOut, syncNow, verifyLoginCode } from '../data/cloud';
+import { deleteAccount, isCloudConfigured, sendLoginCode, signOut, syncNow, verifyLoginCode } from '../data/cloud';
 import type { LastSync } from '../data/sync/sync-state';
 import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { confirmDestructive } from './ui/confirm';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -112,7 +113,30 @@ function SignInForm() {
 function SignedIn({ email }: { email: string }) {
   const lastSync = useLastSync();
   const [busy, setBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const failed = Boolean(lastSync?.error);
+
+  async function remove() {
+    setBusy(true);
+    setDeleteError(null);
+    // Uma exceção (rede caiu no meio) conta como falha: o botão não pode ficar travado.
+    const result = await deleteAccount().catch(() => ({ ok: false }));
+    // Deu certo: a sessão sai e esta parte da tela desmonta.
+    if (!result.ok) {
+      setDeleteError('Não foi possível excluir a conta. Confira a internet e tente de novo.');
+      setBusy(false);
+    }
+  }
+
+  function confirmDelete() {
+    confirmDestructive({
+      title: 'Excluir conta?',
+      message:
+        'A conta e os treinos, tênis e preferências guardados na nuvem serão apagados. O que está neste aparelho continua aqui.',
+      confirmLabel: 'Excluir conta',
+      onConfirm: () => void remove(),
+    });
+  }
 
   async function sync() {
     setBusy(true);
@@ -133,6 +157,12 @@ function SignedIn({ email }: { email: string }) {
       </Text>
       <Button label={busy ? 'Sincronizando…' : 'Sincronizar agora'} onPress={sync} disabled={busy} busy={busy} />
       <Button label="Sair" variant="secondary" onPress={() => void signOut()} disabled={busy} />
+      <Button label="Excluir conta" variant="danger-link" onPress={confirmDelete} disabled={busy} />
+      {deleteError ? (
+        <Text accessibilityLiveRegion="polite" className="text-base font-semibold text-red-700 dark:text-red-400">
+          {deleteError}
+        </Text>
+      ) : null}
     </View>
   );
 }

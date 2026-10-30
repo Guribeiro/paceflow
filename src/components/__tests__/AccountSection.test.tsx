@@ -1,4 +1,5 @@
 import { act, render, screen, userEvent } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import * as cloud from '../../data/cloud';
 import { syncState } from '../../data/sync';
@@ -14,6 +15,7 @@ jest.mock('../../data/cloud', () => ({
   verifyLoginCode: jest.fn(),
   syncNow: jest.fn(),
   signOut: jest.fn(),
+  deleteAccount: jest.fn(),
   subscribeToAccount: jest.fn(),
 }));
 const mocked = jest.mocked(cloud);
@@ -21,6 +23,7 @@ const mocked = jest.mocked(cloud);
 let emitAccount: (email: string | null) => void = () => {};
 
 beforeEach(() => {
+  jest.restoreAllMocks();
   jest.clearAllMocks();
   mockCloudConfigured = true;
   syncState.reset();
@@ -110,6 +113,108 @@ describe('AccountSection conectado', () => {
     await user.press(screen.getByRole('button', { name: 'Sair' }));
     expect(mocked.signOut).toHaveBeenCalled();
     expect(await screen.findByRole('button', { name: 'Enviar código' })).toBeOnTheScreen();
+  });
+});
+
+describe('AccountSection excluir conta', () => {
+  const DELETE_ERROR = 'Não foi possível excluir a conta. Confira a internet e tente de novo.';
+
+  beforeEach(() => {
+    mocked.subscribeToAccount.mockImplementation((listener) => {
+      emitAccount = listener;
+      listener('corredor@exemplo.com');
+      return () => {};
+    });
+  });
+
+  /** Confirma o diálogo tocando no botão destrutivo. */
+  const confirmAlert = () =>
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === 'Excluir conta')?.onPress?.();
+    });
+
+  it('pede confirmação com botão destrutivo antes de excluir', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+
+    expect(alert).toHaveBeenCalledWith('Excluir conta?', expect.stringContaining('apagados'), [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir conta', style: 'destructive', onPress: expect.any(Function) },
+    ]);
+    expect(mocked.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('cancelar a confirmação não exclui', async () => {
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.style === 'cancel')?.onPress?.();
+    });
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+    expect(mocked.deleteAccount).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Excluir conta' })).toBeEnabled();
+  });
+
+  it('confirmar exclui a conta e volta ao formulário de login', async () => {
+    confirmAlert();
+    mocked.deleteAccount.mockImplementation(async () => {
+      emitAccount(null);
+      return { ok: true };
+    });
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+
+    expect(mocked.deleteAccount).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('button', { name: 'Enviar código' })).toBeOnTheScreen();
+    expect(screen.queryByText(DELETE_ERROR)).not.toBeOnTheScreen();
+  });
+
+  it('desativa os botões enquanto exclui', async () => {
+    confirmAlert();
+    let finish: (result: { ok: boolean }) => void = () => {};
+    mocked.deleteAccount.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+
+    expect(screen.getByRole('button', { name: 'Excluir conta' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Sincroniza/ })).toBeDisabled();
+
+    await act(async () => finish({ ok: false }));
+  });
+
+  it('falha mostra o aviso e reativa os botões', async () => {
+    confirmAlert();
+    mocked.deleteAccount.mockResolvedValue({ ok: false, error: 'Network request failed' });
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+
+    expect(await screen.findByText(DELETE_ERROR)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Excluir conta' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sincronizar agora' })).toBeEnabled();
+    // Continua conectado.
+    expect(screen.getByText(/corredor@exemplo.com/)).toBeOnTheScreen();
+  });
+
+  it('nova tentativa apaga o aviso da falha anterior', async () => {
+    confirmAlert();
+    mocked.deleteAccount.mockResolvedValueOnce({ ok: false, error: 'offline' });
+    let finish: (result: { ok: boolean }) => void = () => {};
+    mocked.deleteAccount.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    await render(<AccountSection />);
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+    expect(await screen.findByText(DELETE_ERROR)).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Excluir conta' }));
+    expect(screen.queryByText(DELETE_ERROR)).not.toBeOnTheScreen();
+    await act(async () => finish({ ok: true }));
   });
 });
 

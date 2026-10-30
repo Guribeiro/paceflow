@@ -75,13 +75,30 @@ export async function verifyLoginCode(email: string, token: string): Promise<{ o
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+function resetSyncState() {
+  syncState.reset();
+  shoeSyncState.reset();
+  prefsSyncState.reset();
+}
+
 /** Sai da conta. Os treinos continuam no aparelho; o estado do sync recomeça. */
 export async function signOut(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut();
-  syncState.reset();
-  shoeSyncState.reset();
-  prefsSyncState.reset();
+  resetSyncState();
+}
+
+/**
+ * Exclui a conta e tudo dela na nuvem (exigência da Google Play). Os treinos
+ * continuam no aparelho. A sessão sai só localmente: o usuário já não existe.
+ */
+export async function deleteAccount(): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'Sync não configurado' };
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) return { ok: false, error: error.message };
+  await supabase.auth.signOut({ scope: 'local' });
+  resetSyncState();
+  return { ok: true };
 }
 
 /** E-mail da sessão atual (null sem login) e aviso de mudanças. */

@@ -1,9 +1,10 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
 import { autoPausePreference, routePreference } from '../../data/run-session';
 import { storage } from '../../data/storage/mmkv';
-import { SettingsScreen } from '../SettingsScreen';
+import { PRIVACY_POLICY_URL, SettingsScreen } from '../SettingsScreen';
 
 beforeEach(() => {
   preferencesRepository.setTheme('system');
@@ -91,5 +92,16 @@ describe('SettingsScreen', () => {
     expect(routePreference.get()).toBe(true);
     await render(<SettingsScreen />);
     expect(screen.getByRole('switch', { name: 'Guardar trajeto' })).toBeChecked();
+  });
+
+  it('abre a política de privacidade no navegador', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    await user.press(screen.getByRole('button', { name: 'Política de privacidade' }));
+    expect(openURL).toHaveBeenCalledTimes(1);
+    expect(openURL).toHaveBeenCalledWith('https://guribeiro.github.io/paceflow/privacidade.html');
+    expect(PRIVACY_POLICY_URL).toBe('https://guribeiro.github.io/paceflow/privacidade.html');
+    openURL.mockRestore();
   });
 });
