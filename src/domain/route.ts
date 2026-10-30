@@ -3,8 +3,6 @@
  * (MMKV e backup JSON), nunca no Supabase.
  */
 
-import { haversineMeters } from './geo';
-
 export type Route = [number, number][][];
 
 /** Distância mínima entre pontos guardados durante a corrida. */
@@ -33,66 +31,76 @@ export const routePointCount = (route: Route) => route.reduce((n, segment) => n 
 
 const round5 = (v: number) => Math.round(v * 1e5) / 1e5;
 
-/** Distância (m) do ponto p à reta a–b, num plano local em metros. */
-function offsetMeters(p: [number, number], a: [number, number], b: [number, number]): number {
-  const toMeters = (q: [number, number]) => {
-    const north = haversineMeters({ latitude: a[0], longitude: a[1] }, { latitude: q[0], longitude: a[1] });
-    const east = haversineMeters({ latitude: q[0], longitude: a[1] }, { latitude: q[0], longitude: q[1] });
-    return [Math.sign(q[1] - a[1]) * east, Math.sign(q[0] - a[0]) * north] as const;
-  };
-  const [bx, by] = toMeters(b);
-  const [px, py] = toMeters(p);
-  const len2 = bx * bx + by * by;
-  if (len2 === 0) return Math.hypot(px, py);
-  const t = Math.max(0, Math.min(1, (px * bx + py * by) / len2));
-  return Math.hypot(px - t * bx, py - t * by);
-}
+/** Abaixo disso o desvio é ruído do GPS: o ponto sai mesmo sem limite. */
+const MIN_TOLERANCE_METERS = 1;
+const METERS_PER_DEGREE = (6_371_000 * Math.PI) / 180;
 
-/** Douglas–Peucker: mantém as pontas e os pontos que se afastam mais que `tolerance` metros. */
-function simplifySegment(segment: [number, number][], tolerance: number): [number, number][] {
-  if (segment.length <= 2) return segment;
-  const keep = new Array<boolean>(segment.length).fill(false);
-  keep[0] = keep[segment.length - 1] = true;
-  const stack: [number, number][] = [[0, segment.length - 1]];
+/**
+ * Douglas–Peucker numa passada só: a importância de cada ponto é o desvio
+ * (m) com que ele foi escolhido, limitado pelo do ponto que abriu o seu
+ * trecho. Para qualquer tolerância, o resultado clássico são os pontos com
+ * importância acima dela; as pontas valem Infinity. Desvios num plano local
+ * em metros (a escala de uma corrida dispensa o haversine).
+ */
+function importance(segment: [number, number][]): number[] {
+  const n = segment.length;
+  const result = new Array<number>(n).fill(0);
+  if (n === 0) return result;
+  result[0] = result[n - 1] = Infinity;
+  const kx = METERS_PER_DEGREE * Math.cos((segment[0][0] * Math.PI) / 180);
+  const xs = segment.map(([, lon]) => lon * kx);
+  const ys = segment.map(([lat]) => lat * METERS_PER_DEGREE);
+
+  const stack: [number, number, number][] = [[0, n - 1, Infinity]];
   while (stack.length > 0) {
-    const [first, last] = stack.pop()!;
+    const [first, last, cap] = stack.pop()!;
+    if (last - first < 2) continue;
+    const ax = xs[first];
+    const ay = ys[first];
+    const bx = xs[last] - ax;
+    const by = ys[last] - ay;
+    const len2 = bx * bx + by * by;
     let worst = -1;
-    let worstOffset = tolerance;
+    let worstOffset = -1;
     for (let i = first + 1; i < last; i++) {
-      const offset = offsetMeters(segment[i], segment[first], segment[last]);
+      const px = xs[i] - ax;
+      const py = ys[i] - ay;
+      const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
+      const offset = Math.hypot(px - t * bx, py - t * by);
       if (offset > worstOffset) {
         worst = i;
         worstOffset = offset;
       }
     }
-    if (worst !== -1) {
-      keep[worst] = true;
-      stack.push([first, worst], [worst, last]);
-    }
+    const value = Math.min(worstOffset, cap);
+    result[worst] = value;
+    stack.push([first, worst, value], [worst, last, value]);
   }
-  return segment.filter((_, i) => keep[i]);
+  return result;
 }
 
 /**
- * Reduz o trajeto para guardar: a tolerância (m) dobra até caber em `maxPoints`;
- * coordenadas com 5 casas (~1 m).
+ * Reduz o trajeto para guardar: tira os desvios de até 1 m e, se ainda
+ * passar de `maxPoints`, fica com os pontos mais importantes (pontas
+ * primeiro; com pontas demais, as do começo do trajeto). Coordenadas com 5
+ * casas (~1 m).
  */
 export function simplifyRoute(route: Route, maxPoints = 500): Route {
   const rounded: Route = route.map((segment) => segment.map(([lat, lon]) => [round5(lat), round5(lon)]));
-  let tolerance = 1;
-  let result = rounded.map((segment) => simplifySegment(segment, tolerance));
-  // Com 100 km de tolerância sobra só as pontas: o laço sempre termina.
-  while (routePointCount(result) > maxPoints && tolerance < 100_000) {
-    tolerance *= 2;
-    result = rounded.map((segment) => simplifySegment(segment, tolerance));
-  }
-  // Pontas demais (muitas retomadas): fica o começo do trajeto.
-  let left = maxPoints;
-  return result.flatMap((segment) => {
-    const part = segment.slice(0, Math.max(0, left));
-    left -= part.length;
-    return part.length > 0 ? [part] : [];
+  const candidates: { segment: number; index: number; weight: number }[] = [];
+  rounded.forEach((segment, s) => {
+    importance(segment).forEach((weight, index) => {
+      if (weight > MIN_TOLERANCE_METERS) candidates.push({ segment: s, index, weight });
+    });
   });
+  // A ordem de candidates é a do trajeto; o sort é estável, então empates ficam com o começo.
+  const kept =
+    candidates.length > maxPoints
+      ? [...candidates].sort((a, b) => b.weight - a.weight).slice(0, Math.max(0, maxPoints))
+      : candidates;
+  const keep = rounded.map((segment) => new Array<boolean>(segment.length).fill(false));
+  for (const c of kept) keep[c.segment][c.index] = true;
+  return rounded.map((segment, s) => segment.filter((_, i) => keep[s][i])).filter((segment) => segment.length > 0);
 }
 
 export interface RouteSvg {

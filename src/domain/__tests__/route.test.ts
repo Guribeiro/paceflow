@@ -124,6 +124,149 @@ describe('simplifyRoute', () => {
   });
 });
 
+describe('simplifyRoute (Douglas–Peucker por importância)', () => {
+  const round5 = ([lat, lon]: [number, number]): [number, number] => [
+    Math.round(lat * 1e5) / 1e5,
+    Math.round(lon * 1e5) / 1e5,
+  ];
+  const UNLIMITED = Number.MAX_SAFE_INTEGER;
+  const METERS_PER_DEGREE = (6_371_000 * Math.PI) / 180;
+
+  /** Douglas–Peucker recursivo clássico, no mesmo plano local em metros (x pela latitude do 1º ponto). */
+  function referenceDP(segment: [number, number][], tolerance: number): [number, number][] {
+    if (segment.length <= 2) return segment;
+    const kx = METERS_PER_DEGREE * Math.cos((segment[0][0] * Math.PI) / 180);
+    const xy = segment.map(([lat, lon]) => [lon * kx, lat * METERS_PER_DEGREE] as const);
+    const keep = new Array<boolean>(segment.length).fill(false);
+    keep[0] = keep[segment.length - 1] = true;
+    const recurse = (first: number, last: number) => {
+      if (last - first < 2) return;
+      const [ax, ay] = xy[first];
+      const bx = xy[last][0] - ax;
+      const by = xy[last][1] - ay;
+      const len2 = bx * bx + by * by;
+      let worst = -1;
+      let worstOffset = -1;
+      for (let i = first + 1; i < last; i++) {
+        const px = xy[i][0] - ax;
+        const py = xy[i][1] - ay;
+        const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
+        const offset = Math.hypot(px - t * bx, py - t * by);
+        if (offset > worstOffset) {
+          worst = i;
+          worstOffset = offset;
+        }
+      }
+      if (worstOffset > tolerance) {
+        keep[worst] = true;
+        recurse(first, worst);
+        recurse(worst, last);
+      }
+    };
+    recurse(0, segment.length - 1);
+    return segment.filter((_, i) => keep[i]);
+  }
+
+  /** Gerador pseudoaleatório com seed fixa (mulberry32). */
+  const random = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  /** Trajeto de passos de ~10 m com curvas e ruído lateral de até `jitter` metros. */
+  function randomRoute(seed: number, jitter: number, sizes: number[]): Route {
+    const rnd = random(seed);
+    let north = 0;
+    let east = 0;
+    let heading = rnd() * 2 * Math.PI;
+    return sizes.map((size) =>
+      Array.from({ length: size }, () => {
+        if (rnd() < 0.1) heading += (rnd() - 0.5) * Math.PI;
+        north += 10 * Math.cos(heading);
+        east += 10 * Math.sin(heading);
+        return at(north + (rnd() - 0.5) * 2 * jitter, east + (rnd() - 0.5) * 2 * jitter);
+      }),
+    );
+  }
+
+  const cases = [
+    { seed: 1, jitter: 0.8, sizes: [300] },
+    { seed: 2, jitter: 2, sizes: [250, 1, 2, 120] },
+    { seed: 3, jitter: 5, sizes: [400] },
+    { seed: 4, jitter: 1.5, sizes: [3, 180, 60] },
+  ];
+
+  it.each(cases)('sem limite, é o Douglas–Peucker clássico com tolerância de 1 m (seed $seed)', ({ seed, jitter, sizes }) => {
+    const route = randomRoute(seed, jitter, sizes);
+    const expected = route.map((segment) => referenceDP(segment.map(round5), 1));
+    expect(simplifyRoute(route, UNLIMITED)).toEqual(expected);
+  });
+
+  it.each(cases)('com limite, fica com exatamente min(limite, candidatos) pontos, todos do resultado sem limite (seed $seed)', ({ seed, jitter, sizes }) => {
+    const route = randomRoute(seed, jitter, sizes);
+    const keys = (max: number) => new Set(simplifyRoute(route, max).flat().map((p) => JSON.stringify(p)));
+    const full = keys(UNLIMITED);
+    const candidates = routePointCount(simplifyRoute(route, UNLIMITED));
+    for (const max of [1, 2, 5, 37, candidates - 1, candidates, candidates + 10]) {
+      const result = simplifyRoute(route, max);
+      expect(routePointCount(result)).toBe(Math.min(max, candidates));
+      expect(result.every((segment) => segment.length > 0)).toBe(true);
+    }
+    // Um limite menor só tira pontos de um limite maior, e todos vêm do resultado sem limite.
+    const small = keys(20);
+    const large = keys(60);
+    expect([...small].filter((k) => !large.has(k))).toEqual([]);
+    expect([...large].filter((k) => !full.has(k))).toEqual([]);
+  });
+
+  it('com limite, prioriza o ponto de maior desvio', () => {
+    // 100 m para o norte; o ponto dos 50 m sai 30 m para leste, os dos 20 e 80 m saem 3 m.
+    const points = Array.from({ length: 11 }, (_, i) => at(i * 10, i === 5 ? 30 : i === 2 || i === 8 ? 3 : 0));
+    expect(simplifyRoute([points], 3)).toEqual([[round5(points[0]), round5(points[5]), round5(points[10])]]);
+  });
+
+  it('a importância de um ponto é limitada pela do ponto que abriu o seu trecho', () => {
+    // Segmento 1: o ponto dos 50 m sai só 2 m da reta, mas dentro do trecho dele o
+    // ponto dos 90 m fica a ~40 m da corda; vale 2 m, não 40.
+    const backtrack = [at(0), at(90), at(50, 2), at(100)];
+    // Segmento 2: uma reta com um desvio de 10 m no meio.
+    const bump = [at(0, 500), at(50, 510), at(100, 500)];
+    expect(simplifyRoute([backtrack, bump], 5)).toEqual([
+      [round5(backtrack[0]), round5(backtrack[3])],
+      [round5(bump[0]), round5(bump[1]), round5(bump[2])],
+    ]);
+    // Sem limite, os dois pontos do segmento 1 ficam (os dois passam de 1 m).
+    expect(routePointCount(simplifyRoute([backtrack, bump], UNLIMITED))).toBe(7);
+  });
+
+  it('em empate de importância, fica o ponto do começo do trajeto', () => {
+    const peak = [at(0), at(50, 10), at(100)];
+    expect(simplifyRoute([peak, peak], 5)).toEqual([
+      [round5(peak[0]), round5(peak[1]), round5(peak[2])],
+      [round5(peak[0]), round5(peak[2])],
+    ]);
+  });
+
+  it.each([0, -1])('com limite %p devolve um trajeto vazio', (max) => {
+    expect(simplifyRoute([zigzag(50), line(10)], max)).toEqual([]);
+  });
+
+  it('um segmento de um ponto só é mantido', () => {
+    expect(simplifyRoute([[at(0)]], UNLIMITED)).toEqual([[round5(at(0))]]);
+  });
+
+  it('simplifica um zigue-zague de 2000 pontos em menos de 1 s', () => {
+    const points = zigzag(2000);
+    const started = performance.now();
+    const result = simplifyRoute([points]);
+    const elapsed = performance.now() - started;
+    expect(elapsed).toBeLessThan(1000);
+    expect(routePointCount(result)).toBe(500);
+  });
+});
+
 describe('routeToSvg', () => {
   const nums = (d: string) => d.match(/-?\d+(\.\d+)?/g)!.map(Number);
 
