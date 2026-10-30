@@ -12,10 +12,12 @@ import { VoiceSection } from '../components/VoiceSection';
 import { WeeklyGoalSetting } from '../components/WeeklyGoalSetting';
 import type { ThemePreference } from '../data/repositories/preferences-repository';
 import type { DistanceUnit } from '../domain/pace';
+import { useAutoPause } from '../hooks/useAutoPause';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
+import { Toggle } from '../components/ui/Toggle';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; spoken: string }[] = [
@@ -32,6 +34,7 @@ const UNIT_OPTIONS: { value: DistanceUnit; label: string; spoken: string }[] = [
 export function SettingsScreen() {
   const [theme, setTheme] = useThemePreference();
   const [unit, setUnit] = usePreferredUnit();
+  const [autoPause, setAutoPause] = useAutoPause();
   const workouts = useWorkouts();
 
   return (
@@ -47,6 +50,14 @@ export function SettingsScreen() {
           </Card>
           <WeeklyGoalSetting unit={unit} />
           <RemindersSection />
+          <Card gap={4} title="Corrida" icon="run">
+            <Toggle
+              label="Pausa automática"
+              description="Na aba Correr, o tempo para quando você fica parado (num semáforo, por exemplo) e volta quando você anda."
+              value={autoPause}
+              onChange={setAutoPause}
+            />
+          </Card>
           <VoiceSection unit={unit} />
           <ShoesSection unit={unit} />
           <BackupSection canExport={workouts.length > 0} />

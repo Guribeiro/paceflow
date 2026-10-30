@@ -1,6 +1,7 @@
 import {
   DEFAULT_VOICE_PREFERENCES,
   type VoicePreferences,
+  autoPauseAnnouncement,
   parseVoicePreferences,
   splitAnnouncement,
 } from '../run-voice';
@@ -127,5 +128,34 @@ describe('parseVoicePreferences', () => {
 
   it('rejeita um array', () => {
     expect(parseVoicePreferences([true, true, true, false])).toBeNull();
+  });
+});
+
+describe('autoPauseAnnouncement', () => {
+  const moving = { autoPaused: false, status: 'running' as const };
+  const stopped = { autoPaused: true, status: 'running' as const };
+
+  it('fala ao entrar e ao sair da pausa automática', () => {
+    expect(autoPauseAnnouncement(moving, stopped, DEFAULT_VOICE_PREFERENCES)).toBe('Pausa automática.');
+    expect(autoPauseAnnouncement(stopped, moving, DEFAULT_VOICE_PREFERENCES)).toBe('Retomando.');
+  });
+
+  it('não repete sem mudança', () => {
+    expect(autoPauseAnnouncement(moving, moving, DEFAULT_VOICE_PREFERENCES)).toBeNull();
+    expect(autoPauseAnnouncement(stopped, stopped, DEFAULT_VOICE_PREFERENCES)).toBeNull();
+  });
+
+  it('não fala com a voz desligada, mesmo com as outras opções ligadas', () => {
+    expect(autoPauseAnnouncement(moving, stopped, prefs({ enabled: false }))).toBeNull();
+    expect(autoPauseAnnouncement(stopped, moving, prefs({ enabled: false }))).toBeNull();
+  });
+
+  it('fala mesmo com tempo, pace e total desligados', () => {
+    const quiet = prefs({ splitTime: false, averagePace: false, totalTime: false });
+    expect(autoPauseAnnouncement(moving, stopped, quiet)).toBe('Pausa automática.');
+  });
+
+  it.each(['paused', 'finished'] as const)('não fala "Retomando." quando a corrida fica %s', (status) => {
+    expect(autoPauseAnnouncement(stopped, { autoPaused: false, status }, DEFAULT_VOICE_PREFERENCES)).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import {
   elapsedMs,
   finishRun,
   haversineMeters,
+  isAutoPaused,
   parseRunState,
   pauseRun,
   resumeRun,
@@ -261,6 +262,353 @@ describe('parseRunState', () => {
     ['parcial inválida', { ...valid, splits: [250_000, 'x'] }],
     ['lastPoint como número', { ...valid, lastPoint: 3 }],
     ['sem janela do pace', { ...valid, recent: undefined }],
+  ])('rejeita %s', (_name, value) => {
+    expect(parseRunState(value)).toBeNull();
+  });
+});
+
+describe('pausa automática', () => {
+  /** 120 m a 4 m/s (0–30 s), com a pausa automática ligada: sai do raio de parada pela última vez aos 30 s. */
+  const ran = (autoPause = true) => applySamples(startRun(T0, 1000, autoPause), straight(0, 30, 4));
+  /** Parado em `at`, uma amostra por segundo. */
+  const still = (at: number, fromS: number, toS: number) =>
+    Array.from({ length: toS - fromS + 1 }, (_, i) => north(at, fromS + i));
+  /** Parado com a tremida do GPS: `at + amp`, `at - amp`, alternando. */
+  const jitter = (at: number, fromS: number, toS: number, amp = 2) =>
+    Array.from({ length: toS - fromS + 1 }, (_, i) => north(at + (i % 2 === 0 ? amp : -amp), fromS + i));
+  /** Tremida que soma distância: `at + 4`, `at`, alternando (passos de 4 m, dentro do raio de 6 m). */
+  const swing = (at: number, fromS: number, toS: number) =>
+    Array.from({ length: toS - fromS + 1 }, (_, i) => north(at + (i % 2 === 0 ? 4 : 0), fromS + i));
+  /** Parou nos 120 m aos 30 s e ficou tremendo até os 60 s. */
+  const autoPaused = () => applySamples(ran(), jitter(120, 31, 60));
+
+  it('começa desligada, a menos que pedida', () => {
+    expect(startRun(T0)).toMatchObject({
+      autoPause: false,
+      autoPaused: false,
+      lastMoveAt: T0,
+      anchor: null,
+      resumePending: false,
+    });
+    expect(startRun(T0, 1000, true).autoPause).toBe(true);
+  });
+
+  it('correndo, não pausa', () => {
+    const state = ran();
+    expect(state.autoPaused).toBe(false);
+    expect(isAutoPaused(state, T0 + 30_000)).toBe(false);
+    expect(elapsedMs(state, T0 + 30_000)).toBe(30_000);
+  });
+
+  it('parado com a tremida do GPS, pausa depois de 8 s e esses 8 s contam', () => {
+    const before = applySamples(ran(), jitter(120, 31, 38));
+    expect(before.autoPaused).toBe(false);
+    expect(elapsedMs(before, T0 + 38_000)).toBe(38_000);
+
+    const state = applySamples(before, jitter(120, 39, 60));
+    expect(state).toMatchObject({ status: 'running', autoPaused: true, movingMs: 38_000, resumedAt: null });
+    expect(state.lastPoint?.movingMs).toBe(30_000);
+    expect(elapsedMs(state, T0 + 600_000)).toBe(38_000);
+    expect(isAutoPaused(state, T0 + 60_000)).toBe(true);
+  });
+
+  it('sem amostras (GPS calado), o relógio congela 8 s depois da última saída do raio', () => {
+    const state = ran();
+    expect(isAutoPaused(state, T0 + 38_000)).toBe(false);
+    expect(isAutoPaused(state, T0 + 38_001)).toBe(true);
+    expect(elapsedMs(state, T0 + 38_000)).toBe(38_000);
+    expect(elapsedMs(state, T0 + 300_000)).toBe(38_000);
+    // A pausa só fica gravada quando chega a próxima amostra, com o mesmo tempo.
+    expect(state.autoPaused).toBe(false);
+    expect(applySamples(state, [north(120, 300)])).toMatchObject({ autoPaused: true, movingMs: 38_000 });
+  });
+
+  it('caminhando a 1 m/s não pausa', () => {
+    const state = applySamples(startRun(T0, 1000, true), straight(0, 120, 1));
+    expect(state.autoPaused).toBe(false);
+    expect(isAutoPaused(state, T0 + 120_000)).toBe(false);
+    expect(elapsedMs(state, T0 + 120_000)).toBe(120_000);
+    expect(state.distanceMeters).toBeCloseTo(120, 0);
+  });
+
+  it('com a pausa automática desligada, o tempo parado conta', () => {
+    const state = applySamples(ran(false), jitter(120, 31, 120));
+    expect(state.autoPaused).toBe(false);
+    expect(isAutoPaused(state, T0 + 120_000)).toBe(false);
+    expect(elapsedMs(state, T0 + 120_000)).toBe(120_000);
+  });
+
+  it('a primeira amostra a 10 m de onde parou só pede confirmação', () => {
+    const state = applySamples(autoPaused(), [north(131, 61)]);
+    expect(state).toMatchObject({ autoPaused: true, resumePending: true, movingMs: 38_000, resumedAt: null });
+    expect(elapsedMs(state, T0 + 61_000)).toBe(38_000);
+  });
+
+  it('volta a contar na segunda amostra seguida a 10 m, sem somar o trecho de saída', () => {
+    const paused = autoPaused();
+    const resumed = applySamples(paused, [north(131, 61), north(135, 62)]);
+    // Retoma na amostra que confirmou: o segundo entre as duas não conta.
+    expect(resumed).toMatchObject({ autoPaused: false, resumePending: false, resumedAt: T0 + 62_000, movingMs: 38_000 });
+    expect(resumed.distanceMeters).toBe(paused.distanceMeters);
+    expect(resumed.lastPoint?.latitude).toBe(north(135, 62).latitude);
+
+    const state = applySamples(resumed, straight(63, 72, 4, 139));
+    expect(elapsedMs(state, T0 + 72_000)).toBe(48_000);
+    expect(state.distanceMeters).toBeCloseTo(paused.distanceMeters + 40, 0);
+    expect(currentPace(state)).toBeCloseTo(250, 0);
+  });
+
+  describe('salto do GPS parado', () => {
+    /** Aplica uma amostra por vez e devolve se ficou pausada depois de cada uma. */
+    const timeline = (samples: RunSample[]) => {
+      let state = autoPaused();
+      const paused = samples.map((sample) => {
+        state = applySamples(state, [sample]);
+        return state.autoPaused;
+      });
+      return { state, paused };
+    };
+
+    it.each([
+      ['20 m com precisão de 20 m', north(140, 61, 20)],
+      ['500 m', north(620, 61, 10)],
+    ])('um salto único de %s não retoma', (_name, spike) => {
+      const { state, paused } = timeline([spike, ...jitter(120, 62, 100)]);
+      expect(paused.every(Boolean)).toBe(true);
+      expect(state).toMatchObject({ autoPaused: true, resumePending: false, movingMs: 38_000 });
+      expect(state.distanceMeters).toBe(autoPaused().distanceMeters);
+    });
+
+    it('uma amostra perto depois de uma longe zera a confirmação', () => {
+      let state = applySamples(autoPaused(), [north(140, 61)]);
+      expect(state.resumePending).toBe(true);
+      state = applySamples(state, [north(121, 62)]);
+      expect(state).toMatchObject({ autoPaused: true, resumePending: false });
+      // Longe de novo: começa outra confirmação, não retoma.
+      state = applySamples(state, [north(140, 63)]);
+      expect(state).toMatchObject({ autoPaused: true, resumePending: true });
+      state = applySamples(state, [north(144, 64)]);
+      expect(state).toMatchObject({ autoPaused: false, resumedAt: T0 + 64_000 });
+    });
+
+    it('amostra imprecisa não pede nem desfaz a confirmação', () => {
+      expect(applySamples(autoPaused(), [north(200, 61, 40)]).resumePending).toBe(false);
+      const state = applySamples(autoPaused(), [north(140, 61), north(120, 62, 40), north(144, 63)]);
+      expect(state).toMatchObject({ autoPaused: false, resumedAt: T0 + 63_000 });
+    });
+
+    it('depois de retomar, uma nova parada também exige duas amostras', () => {
+      let state = applySamples(autoPaused(), [north(131, 61), north(135, 62)]);
+      state = applySamples(state, [...straight(63, 72, 4, 139), ...jitter(175, 73, 90)]);
+      expect(state.autoPaused).toBe(true);
+      expect(applySamples(state, [north(200, 91)])).toMatchObject({ autoPaused: true, resumePending: true });
+    });
+  });
+
+  it('a tremida e passos de menos de 10 m não retomam', () => {
+    const state = applySamples(autoPaused(), [...jitter(120, 61, 120, 3), north(129, 121)]);
+    expect(state).toMatchObject({ autoPaused: true, movingMs: 38_000, resumedAt: null });
+  });
+
+  it('pausada, o pace atual fica sem leitura', () => {
+    expect(currentPace(ran())).toBeCloseTo(250, 0);
+    expect(currentPace(autoPaused())).toBeNull();
+  });
+
+  it('a tremida somada dentro do raio sai da distância', () => {
+    const swinging = applySamples(ran(), swing(120, 31, 38));
+    expect(swinging.distanceMeters).toBeCloseTo(152, 0); // 8 passos de 4 m somados enquanto parado
+
+    const paused = applySamples(swinging, swing(120, 39, 39));
+    expect(paused.autoPaused).toBe(true);
+    // Volta ao mesmo valor de uma parada sem tremida alguma.
+    expect(paused.distanceMeters).toBe(applySamples(ran(), still(120, 31, 39)).distanceMeters);
+  });
+
+  it('parar sem tremida não tira distância já corrida', () => {
+    const state = applySamples(ran(), still(120, 31, 39));
+    expect(state.autoPaused).toBe(true);
+    expect(state.distanceMeters).toBeCloseTo(ran().distanceMeters, 3);
+  });
+
+  it('não devolve a distância se uma parcial fechou com a tremida dentro do raio', () => {
+    // Centro do raio nos 992 m (248 s); a tremida passa dos 1000 m e fecha o 1º km.
+    const run = applySamples(startRun(T0, 1000, true), straight(0, 248, 4));
+    const state = applySamples(run, swing(992, 249, 257));
+    expect(state.autoPaused).toBe(true);
+    expect(state.splits).toHaveLength(1);
+    expect(state.distanceMeters).toBeCloseTo(1024, 0);
+  });
+
+  it('uma parcial fechada antes de parar não impede a volta da distância', () => {
+    // 1104 m: o 1º km fechou correndo, antes do centro do raio.
+    const run = applySamples(startRun(T0, 1000, true), straight(0, 276, 4));
+    const state = applySamples(run, swing(1104, 277, 285));
+    expect(state.autoPaused).toBe(true);
+    expect(state.splits).toHaveLength(1);
+    expect(state.distanceMeters).toBe(applySamples(run, still(1104, 277, 285)).distanceMeters);
+  });
+
+  describe('amostras imprecisas (> 25 m)', () => {
+    it('não gravam a pausa nem contam como movimento', () => {
+      const state = applySamples(ran(), [...still(120, 31, 60).map((s) => ({ ...s, accuracy: 30 })), north(200, 61, 40)]);
+      expect(state.autoPaused).toBe(false);
+      expect(elapsedMs(state, T0 + 61_000)).toBe(38_000);
+    });
+
+    it('não retomam', () => {
+      const state = applySamples(autoPaused(), [north(200, 61, 40), north(300, 62, 25.1)]);
+      expect(state).toMatchObject({ autoPaused: true, movingMs: 38_000 });
+    });
+  });
+
+  describe('limites exatos', () => {
+    // No equador, `metros / (R·π/180)` graus de latitude dá a distância exata em haversineMeters.
+    const DEGREES_PER_METER = 180 / (Math.PI * 6_371_000);
+    const equator = (meters: number, seconds: number): RunSample => ({
+      latitude: meters * DEGREES_PER_METER,
+      longitude: 0,
+      accuracy: 5,
+      timestamp: T0 + seconds * 1000,
+    });
+    const stopped = () =>
+      applySamples(startRun(T0, 1000, true), Array.from({ length: 10 }, (_, i) => equator(0, i)));
+
+    it('as distâncias de teste são exatas', () => {
+      expect(haversineMeters(equator(0, 0), equator(6, 0))).toBe(6);
+      expect(haversineMeters(equator(0, 0), equator(10, 0))).toBe(10);
+    });
+
+    it('sair exatamente 6 m do centro conta como movimento', () => {
+      const state = applySamples(startRun(T0, 1000, true), [equator(0, 0), equator(6, 9)]);
+      expect(state).toMatchObject({ autoPaused: false, lastMoveAt: T0 + 9000 });
+    });
+
+    it('pausa só depois de 8 s, não aos 8 s', () => {
+      expect(applySamples(startRun(T0, 1000, true), [equator(0, 0), equator(0, 8)]).autoPaused).toBe(false);
+      expect(stopped()).toMatchObject({ autoPaused: true, movingMs: 8000 });
+    });
+
+    it('retoma com duas amostras a exatamente 10 m de onde parou', () => {
+      expect(applySamples(stopped(), [equator(10, 20)])).toMatchObject({ autoPaused: true, resumePending: true });
+      expect(applySamples(stopped(), [equator(10, 20), equator(10, 21)])).toMatchObject({
+        autoPaused: false,
+        resumedAt: T0 + 21_000,
+      });
+    });
+  });
+
+  describe('com a pausa manual', () => {
+    it('pausar durante a automática guarda o tempo congelado', () => {
+      const state = pauseRun(autoPaused(), T0 + 90_000);
+      expect(state).toMatchObject({ status: 'paused', autoPaused: false, movingMs: 38_000, resumedAt: null });
+      expect(elapsedMs(state, T0 + 500_000)).toBe(38_000);
+    });
+
+    it('pausar ou finalizar no meio da confirmação a descarta', () => {
+      const pending = applySamples(autoPaused(), [north(140, 61)]);
+      expect(pending.resumePending).toBe(true);
+      expect(pauseRun(pending, T0 + 62_000).resumePending).toBe(false);
+      expect(finishRun(pending, T0 + 62_000).resumePending).toBe(false);
+      expect(resumeRun(pauseRun(pending, T0 + 62_000), T0 + 70_000).resumePending).toBe(false);
+    });
+
+    it('pausar com o GPS calado guarda o tempo até a parada', () => {
+      expect(pauseRun(ran(), T0 + 60_000).movingMs).toBe(38_000);
+    });
+
+    it('retomar recomeça o raio de parada e o tempo volta a contar', () => {
+      const resumed = resumeRun(pauseRun(autoPaused(), T0 + 90_000), T0 + 100_000);
+      expect(resumed).toMatchObject({
+        status: 'running',
+        autoPaused: false,
+        resumedAt: T0 + 100_000,
+        lastMoveAt: T0 + 100_000,
+        lastPoint: null,
+        anchor: null,
+      });
+      // Sem amostra nova, o relógio corre: não há ponto de parada.
+      expect(isAutoPaused(resumed, T0 + 200_000)).toBe(false);
+
+      const state = applySamples(resumed, straight(100, 110, 4, 500));
+      expect(state.autoPaused).toBe(false);
+      expect(elapsedMs(state, T0 + 110_000)).toBe(48_000);
+    });
+
+    it('depois de retomar, só pausa sozinha 8 s depois da primeira amostra', () => {
+      const resumed = resumeRun(pauseRun(autoPaused(), T0 + 90_000), T0 + 100_000);
+      expect(applySamples(resumed, still(500, 105, 113)).autoPaused).toBe(false);
+      expect(applySamples(resumed, still(500, 105, 114))).toMatchObject({ autoPaused: true, movingMs: 38_000 + 13_000 });
+    });
+
+    it('finalizar durante a automática guarda o tempo congelado', () => {
+      expect(finishRun(autoPaused(), T0 + 90_000)).toMatchObject({ status: 'finished', autoPaused: false, movingMs: 38_000 });
+      expect(finishRun(ran(), T0 + 90_000).movingMs).toBe(38_000);
+    });
+  });
+});
+
+describe('parseRunState (pausa automática)', () => {
+  const running = applySamples(startRun(T0, 1000, true), straight(0, 30, 4));
+  const paused = applySamples(running, Array.from({ length: 20 }, (_, i) => north(120, 31 + i)));
+
+  it('aceita um estado em pausa automática salvo em JSON', () => {
+    expect(paused.autoPaused).toBe(true);
+    expect(parseRunState(JSON.parse(JSON.stringify(paused)))).toEqual(paused);
+  });
+
+  it('completa uma corrida salva antes da pausa automática', () => {
+    const { autoPause: _a, autoPaused: _b, lastMoveAt: _c, anchor: _d, resumePending: _e, ...old } = running;
+    expect(parseRunState(JSON.parse(JSON.stringify(old)))).toEqual({
+      ...old,
+      autoPause: false,
+      autoPaused: false,
+      lastMoveAt: T0,
+      anchor: null,
+      resumePending: false,
+    });
+
+    const { autoPause: _f, autoPaused: _g, lastMoveAt: _h, anchor: _i, resumePending: _j, ...oldPaused } = pauseRun(
+      running,
+      T0 + 40_000,
+    );
+    expect(parseRunState(oldPaused)).toMatchObject({
+      autoPause: false,
+      autoPaused: false,
+      lastMoveAt: T0,
+      anchor: null,
+      resumePending: false,
+    });
+  });
+
+  it('completa uma corrida salva antes da confirmação da retomada', () => {
+    const { resumePending: _a, ...old } = paused;
+    expect(parseRunState(JSON.parse(JSON.stringify(old)))).toEqual({ ...old, resumePending: false });
+  });
+
+  it('numa corrida antiga retomada, a parada conta a partir da retomada', () => {
+    const { autoPause: _a, autoPaused: _b, lastMoveAt: _c, anchor: _d, resumePending: _e, ...old } = resumeRun(pauseRun(running, T0 + 40_000), T0 + 90_000);
+    expect(parseRunState(old)?.lastMoveAt).toBe(T0 + 90_000);
+  });
+
+  it.each([
+    ['autoPause como texto', { ...running, autoPause: 'sim' }],
+    ['autoPaused como número', { ...running, autoPaused: 1 }],
+    ['lastMoveAt como texto', { ...running, lastMoveAt: '0' }],
+    ['lastMoveAt não finito', { ...running, lastMoveAt: Number.POSITIVE_INFINITY }],
+    ['anchor como número', { ...running, anchor: 3 }],
+    ['anchor vazio', { ...running, anchor: {} }],
+    ['anchor como texto', { ...running, anchor: 'centro' }],
+    ['anchor com latitude NaN', { ...running, anchor: { ...running.anchor, latitude: Number.NaN } }],
+    ['anchor sem distância', { ...running, anchor: { latitude: -23.5, longitude: -46.6 } }],
+    ['lastPoint vazio', { ...running, lastPoint: {} }],
+    ['lastPoint como texto', { ...running, lastPoint: 'ponto' }],
+    ['lastPoint com movingMs NaN', { ...running, lastPoint: { ...running.lastPoint, movingMs: Number.NaN } }],
+    ['lastPoint com longitude em texto', { ...running, lastPoint: { ...running.lastPoint, longitude: '-46.6' } }],
+    ['resumePending como texto', { ...paused, resumePending: 'sim' }],
+    ['pausa automática sem o ponto de parada', { ...paused, lastPoint: null }],
+    ['pausa automática numa corrida pausada', { ...paused, status: 'paused' }],
+    ['pausa automática numa corrida finalizada', { ...paused, status: 'finished' }],
   ])('rejeita %s', (_name, value) => {
     expect(parseRunState(value)).toBeNull();
   });

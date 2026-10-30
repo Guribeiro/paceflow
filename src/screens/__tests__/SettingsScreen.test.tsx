@@ -1,11 +1,13 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
 
 import { preferencesRepository } from '../../data/preferences';
+import { autoPausePreference } from '../../data/run-session';
 import { SettingsScreen } from '../SettingsScreen';
 
 beforeEach(() => {
   preferencesRepository.setTheme('system');
   preferencesRepository.setUnit('km');
+  autoPausePreference.set(true);
 });
 
 describe('SettingsScreen', () => {
@@ -35,5 +37,26 @@ describe('SettingsScreen', () => {
     await render(<SettingsScreen />);
     await user.press(screen.getByRole('radio', { name: 'Milhas' }));
     expect(preferencesRepository.getUnit()).toBe('mi');
+  });
+
+  it('liga e desliga a pausa automática da corrida', async () => {
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+    const toggle = () => screen.getByRole('switch', { name: 'Pausa automática' });
+    expect(toggle()).toBeChecked();
+
+    await user.press(toggle());
+    expect(autoPausePreference.get()).toBe(false);
+    expect(toggle()).not.toBeChecked();
+
+    await user.press(toggle());
+    expect(autoPausePreference.get()).toBe(true);
+    expect(toggle()).toBeChecked();
+  });
+
+  it('mostra a pausa automática desligada quando foi desligada antes', async () => {
+    autoPausePreference.set(false);
+    await render(<SettingsScreen />);
+    expect(screen.getByRole('switch', { name: 'Pausa automática' })).not.toBeChecked();
   });
 });

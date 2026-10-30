@@ -9,11 +9,14 @@ import {
   resumeRun,
   startRun,
 } from '../domain/run-tracker';
+import { createFlagRepository } from './repositories/flag-repository';
 import { createRunRepository } from './repositories/run-repository';
-import { announceSplit } from './run-voice';
+import { announceAutoPause, announceSplit } from './run-voice';
 import { storage } from './storage/mmkv';
 
 export const runRepository = createRunRepository(storage);
+/** Pausa automática nas próximas corridas (por aparelho; ligada por padrão). */
+export const autoPausePreference = createFlagRepository(storage, 'run-auto-pause:v1', true);
 
 export const RUN_TASK = 'paceflow-run';
 
@@ -31,6 +34,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RUN_TASK, async
   }));
   const next = applySamples(state, samples);
   runRepository.set(next);
+  announceAutoPause(state, next);
   announceSplit(state, next);
 });
 
@@ -42,7 +46,9 @@ async function startUpdates() {
   await Location.startLocationUpdatesAsync(RUN_TASK, {
     accuracy: Location.Accuracy.BestForNavigation,
     timeInterval: 1000,
-    distanceInterval: 3,
+    // Uma amostra por segundo mesmo parado: é assim que a pausa automática
+    // percebe a parada. A tremida do GPS parado é filtrada no domínio.
+    distanceInterval: 0,
     foregroundService: {
       notificationTitle: 'PaceFlow gravando corrida',
       notificationBody: 'Toque para ver tempo, distância e pace.',
@@ -58,12 +64,16 @@ async function stopUpdates() {
 }
 
 /** Pede a localização "durante o uso" e começa a gravar. */
-export async function startRunSession(splitMeters: number, now: () => number = Date.now): Promise<StartResult> {
+export async function startRunSession(
+  splitMeters: number,
+  autoPause: boolean,
+  now: () => number = Date.now,
+): Promise<StartResult> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return permission.canAskAgain ? 'denied' : 'blocked';
   if (!(await Location.hasServicesEnabledAsync())) return 'gps-off';
 
-  runRepository.set(startRun(now(), splitMeters));
+  runRepository.set(startRun(now(), splitMeters, autoPause));
   try {
     await startUpdates();
   } catch (e) {

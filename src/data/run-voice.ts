@@ -1,7 +1,7 @@
 import * as Speech from 'expo-speech';
 
 import type { RunState } from '../domain/run-tracker';
-import { splitAnnouncement } from '../domain/run-voice';
+import { autoPauseAnnouncement, splitAnnouncement } from '../domain/run-voice';
 import { createVoicePreferencesRepository } from './repositories/voice-preferences-repository';
 import { storage } from './storage/mmkv';
 
@@ -17,6 +17,12 @@ const LANGUAGE = 'pt-BR';
 export function announceSplit(before: RunState, after: RunState) {
   if (after.splits.length <= before.splits.length) return;
   const text = splitAnnouncement(after, voicePreferences.get());
+  if (text) Speech.speak(text, { language: LANGUAGE });
+}
+
+/** Chamado pela tarefa do GPS: avisa quando a pausa automática começa ou termina. */
+export function announceAutoPause(before: RunState, after: RunState) {
+  const text = autoPauseAnnouncement(before, after, voicePreferences.get());
   if (text) Speech.speak(text, { language: LANGUAGE });
 }
 

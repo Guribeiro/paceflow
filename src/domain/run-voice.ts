@@ -55,3 +55,13 @@ export function splitAnnouncement(
   if (prefs.totalTime) parts.push(`Tempo total: ${spokenDuration(closedAt)}.`);
   return parts.join(' ');
 }
+
+/** "Pausa automática." ao parar e "Retomando." ao voltar; null sem mudança ou com a voz desligada. */
+export function autoPauseAnnouncement(
+  before: Pick<RunState, 'autoPaused'>,
+  after: Pick<RunState, 'autoPaused' | 'status'>,
+  prefs: VoicePreferences,
+): string | null {
+  if (!prefs.enabled || after.status !== 'running' || before.autoPaused === after.autoPaused) return null;
+  return after.autoPaused ? 'Pausa automática.' : 'Retomando.';
+}

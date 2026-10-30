@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import { Alert, Linking } from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
-import { discardRunSession, runRepository } from '../../data/run-session';
+import { autoPausePreference, discardRunSession, runRepository } from '../../data/run-session';
 import { workoutRepository } from '../../data/workouts';
 import { type RunSample, applySamples, finishRun, pauseRun, startRun } from '../../domain/run-tracker';
 import { RunScreen } from '../RunScreen';
@@ -38,6 +38,7 @@ const permission = (canAskAgain: boolean): Location.LocationPermissionResponse =
 
 beforeEach(async () => {
   preferencesRepository.setUnit('km');
+  autoPausePreference.set(true);
   await discardRunSession();
   workoutRepository.list().forEach((w) => workoutRepository.remove(w.id));
   jest.clearAllMocks();
@@ -58,6 +59,14 @@ describe('Correr: parado', () => {
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeOnTheScreen();
     expect(screen.getByLabelText('Distância: 0,00 quilômetros')).toBeOnTheScreen();
     expect(screen.getByLabelText('Pace atual: sem leitura')).toBeOnTheScreen();
+  });
+
+  it.each([true, false])('começa com a pausa automática dos Ajustes (%s)', async (autoPause) => {
+    autoPausePreference.set(autoPause);
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+    expect(runRepository.get()?.autoPause).toBe(autoPause);
   });
 
   it('grava parciais em milhas quando a unidade é milhas', async () => {
@@ -338,5 +347,54 @@ describe('Correr: parcial mais rápida', () => {
 
     expect(screen.getByLabelText('Quilômetro 1: 4 minutos e 10 segundos')).toBeOnTheScreen();
     expect(screen.queryByText(/mais rápida/)).toBeNull();
+  });
+});
+
+describe('Correr: pausa automática', () => {
+  /** 120 m a 4 m/s em 30 s (pace 4:10/km), com a pausa automática ligada; parado nos 120 m dos 31 s aos 60 s. */
+  const ran = () => applySamples(startRun(T0, 1000, true), straight(0, 30, 4));
+  const stopped = () => applySamples(ran(), Array.from({ length: 30 }, (_, i) => north(120, 31 + i)));
+
+  it('parada gravada: mostra o selo, o tempo congelado e o pace sem leitura, e ainda Pausar', async () => {
+    runRepository.set(stopped());
+    await render(<RunScreen />);
+
+    expect(screen.getByText('⏸ Pausa automática')).toBeOnTheScreen();
+    expect(screen.queryByText('⏸ Pausada')).toBeNull();
+    expect(screen.getByText('Parado: o tempo volta a contar quando você andar de novo.')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Tempo: 38 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: sem leitura')).toBeOnTheScreen();
+    expect(screen.getByText('--:--')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Finalizar' })).toBeNull();
+  });
+
+  it('GPS calado há mais de 8 s: já mostra a pausa e esconde o pace', async () => {
+    // Sem amostra depois dos 30 s e o relógio real bem depois: a pausa vale pelo relógio.
+    runRepository.set(ran());
+    await render(<RunScreen />);
+
+    expect(screen.getByText('⏸ Pausa automática')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Tempo: 38 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: sem leitura')).toBeOnTheScreen();
+  });
+
+  it('com a pausa automática desligada na corrida, não mostra o selo', async () => {
+    runRepository.set(applySamples(startRun(T0), straight(0, 30, 4)));
+    await render(<RunScreen />);
+
+    expect(screen.queryByText('⏸ Pausa automática')).toBeNull();
+    expect(screen.getByLabelText('Pace atual: 4:10 por quilômetro')).toBeOnTheScreen();
+  });
+
+  it('pausar pelo botão durante a automática troca o selo e guarda o tempo congelado', async () => {
+    runRepository.set(stopped());
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Pausar' }));
+
+    expect(runRepository.get()).toMatchObject({ status: 'paused', autoPaused: false, movingMs: 38_000 });
+    expect(screen.getByText('⏸ Pausada')).toBeOnTheScreen();
+    expect(screen.queryByText('⏸ Pausa automática')).toBeNull();
   });
 });

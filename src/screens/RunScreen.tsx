@@ -24,8 +24,9 @@ import {
   startRunSession,
 } from '../data/run-session';
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
-import { type RunState, currentPace, elapsedMs, splitDurations } from '../domain/run-tracker';
+import { type RunState, currentPace, elapsedMs, isAutoPaused, splitDurations } from '../domain/run-tracker';
 import { splitUnit } from '../domain/workout';
+import { useAutoPause } from '../hooks/useAutoPause';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useRunSession } from '../hooks/useRunSession';
 
@@ -46,19 +47,20 @@ const perUnit = (secondsPerKm: number, unit: DistanceUnit) => (unit === 'mi' ? s
 
 function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: DistanceUnit }) {
   const seconds = Math.floor(elapsedMs(run, now) / 1000);
-  const pace = currentPace(run);
+  const paused = run.status === 'paused';
+  const autoPaused = !paused && isAutoPaused(run, now);
+  const pace = autoPaused ? null : currentPace(run);
   const splits = splitDurations(run);
   const lastSplit = splits.at(-1);
-  const paused = run.status === 'paused';
 
   return (
     <View className="gap-4">
-      {paused ? (
+      {paused || autoPaused ? (
         <Text
           accessibilityLiveRegion="polite"
           className="self-start overflow-hidden rounded-full bg-brand-soft px-4 py-2 text-lg font-bold text-brand-ink dark:bg-brand-soft-dark dark:text-brand-ink-dark"
         >
-          ⏸ Pausada
+          {paused ? '⏸ Pausada' : '⏸ Pausa automática'}
         </Text>
       ) : null}
       <StatTile
@@ -107,7 +109,9 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
       <Text className="text-base text-muted dark:text-muted-dark">
         {paused
           ? 'Pausada: tempo e distância não contam. Finalize para registrar a corrida.'
-          : 'Pode apagar a tela e guardar o celular: a gravação continua. Pause para finalizar.'}
+          : autoPaused
+            ? 'Parado: o tempo volta a contar quando você andar de novo.'
+            : 'Pode apagar a tela e guardar o celular: a gravação continua. Pause para finalizar.'}
       </Text>
     </View>
   );
@@ -191,6 +195,7 @@ function FinishedRun({
 
 export function RunScreen() {
   const [unit] = usePreferredUnit();
+  const [autoPause] = useAutoPause();
   const { run, now } = useRunSession();
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -201,7 +206,7 @@ export function RunScreen() {
     setError(null);
     setSaved(null);
     try {
-      const result = await startRunSession(SPLIT_METERS[unit]);
+      const result = await startRunSession(SPLIT_METERS[unit], autoPause);
       if (result !== 'started') setError(START_ERRORS[result]);
     } catch {
       setError('Não foi possível iniciar o GPS. Tente de novo.');
