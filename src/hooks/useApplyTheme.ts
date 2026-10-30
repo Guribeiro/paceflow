@@ -16,13 +16,15 @@ import { useThemePreference } from './useThemePreference';
 export function useApplyTheme() {
   const [theme] = useThemePreference();
   const systemScheme = useColorScheme();
+  // No nativo o tema do sistema não entra: depender dele repetia o set a cada troca.
+  const browserScheme = Platform.OS === 'web' ? systemScheme : null;
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
       colorScheme.set(theme);
       return;
     }
-    const resolved = theme === 'system' ? systemScheme : theme;
+    const resolved = theme === 'system' ? browserScheme : theme;
     colorScheme.set(resolved === 'dark' ? 'dark' : 'light');
-  }, [theme, systemScheme]);
+  }, [theme, browserScheme]);
 }

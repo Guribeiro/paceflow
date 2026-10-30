@@ -12,8 +12,16 @@ import { useWidgetSync } from '../hooks/useWidgetSync';
 
 applyStoredTheme();
 
-export default function RootLayout() {
+/**
+ * Isolado num componente próprio: assim a mudança da preferência de tema não
+ * re-renderiza o layout (e com ele todas as abas) antes de a troca começar.
+ */
+function ThemeSync() {
   useApplyTheme();
+  return null;
+}
+
+export default function RootLayout() {
   useWidgetSync();
   useAutoSync();
   useReminderSync();
@@ -28,6 +36,7 @@ export default function RootLayout() {
 
   return (
     <>
+      <ThemeSync />
       {/* "auto" segue o colorScheme do app (ícones escuros no tema claro e vice-versa). */}
       <StatusBar style="auto" />
       {/* Com 4+ abas o Material 3 esconde os rótulos das não selecionadas; sempre visíveis é mais claro. */}

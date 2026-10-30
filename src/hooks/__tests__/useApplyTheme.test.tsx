@@ -5,7 +5,7 @@ import * as ReactNative from 'react-native';
 
 import { preferencesRepository } from '../../data/preferences';
 import { useApplyTheme } from '../useApplyTheme';
-import { applyStoredTheme } from '../useThemePreference';
+import { applyStoredTheme, useThemePreference } from '../useThemePreference';
 
 const setScheme = jest.spyOn(colorScheme, 'set').mockImplementation(() => {});
 const systemScheme = jest.spyOn(ReactNative, 'useColorScheme');
@@ -52,6 +52,14 @@ describe('applyStoredTheme', () => {
     preferencesRepository.setTheme('light');
     applyStoredTheme();
     expect(setScheme).toHaveBeenCalledWith('light');
+  });
+
+  it('trocar o tema pelo hook já pede a troca, sem esperar o re-render', async () => {
+    const { result } = await renderHook(() => useThemePreference());
+    setScheme.mockClear();
+    result.current[1]('dark');
+    expect(setScheme).toHaveBeenCalledWith('dark');
+    expect(preferencesRepository.getTheme()).toBe('dark');
   });
 
   it('não faz nada na web, onde o hook resolve o tema do navegador', () => {
