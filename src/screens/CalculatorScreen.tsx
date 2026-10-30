@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAware } from '../components/KeyboardAware';
 import { ChoiceChips } from '../components/ChoiceChips';
 import { Field } from '../components/Field';
+import { TimeField } from '../components/TimeField';
 import { IntervalsMode } from '../components/IntervalsMode';
 import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
@@ -103,12 +104,11 @@ export function CalculatorScreen() {
                     error={distanceError}
                     fill={!large}
                   />
-                  <Field
+                  <TimeField
                     label="Tempo"
                     value={durationText}
                     onChangeText={setDurationText}
                     placeholder="25:00"
-                    keyboardType="numbers-and-punctuation"
                     error={durationError}
                     fill={!large}
                   />

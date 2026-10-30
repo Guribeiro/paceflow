@@ -17,6 +17,7 @@ import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
+import { TimeField } from './TimeField';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { ButtonRow } from './ui/ButtonRow';
@@ -83,11 +84,10 @@ export function EditWorkoutForm({ workout, unit, onDone }: Props) {
           error={distanceError}
           fill={!large}
         />
-        <Field
+        <TimeField
           label="Tempo"
           value={durationText}
           onChangeText={setDurationText}
-          keyboardType="numbers-and-punctuation"
           error={durationError}
           fill={!large}
         />

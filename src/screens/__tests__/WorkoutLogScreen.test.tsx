@@ -85,6 +85,23 @@ describe('WorkoutLogScreen', () => {
     expect(new Date(workoutRepository.getById(workout.id)!.date).toDateString()).toBe(yesterday.toDateString());
   });
 
+  it('edita o tempo pré-preenchido apagando e digitando só números', async () => {
+    const workout = addWorkout();
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+
+    await user.press(screen.getAllByRole('button', { name: 'Editar treino' })[0]);
+    const field = screen.getByLabelText('Tempo');
+    expect(field).toHaveDisplayValue('50:00');
+    await user.type(field, '{Backspace}{Backspace}');
+    expect(screen.getByLabelText('Tempo')).toHaveDisplayValue('50');
+    await user.type(screen.getByLabelText('Tempo'), '30');
+    expect(screen.getByLabelText('Tempo')).toHaveDisplayValue('50:30');
+    await user.press(screen.getByRole('button', { name: 'Salvar' }));
+
+    expect(workoutRepository.getById(workout.id)).toMatchObject({ distanceMeters: 10000, durationSeconds: 3030 });
+  });
+
   it('não deixa salvar a edição com tempo inválido', async () => {
     addWorkout();
     const user = userEvent.setup();

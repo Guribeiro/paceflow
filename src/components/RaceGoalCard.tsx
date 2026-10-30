@@ -16,6 +16,7 @@ import { useRaceGoal } from '../hooks/useRaceGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
+import { TimeField } from './TimeField';
 import { TrainingPaces } from './TrainingPaces';
 import { Button } from './ui/Button';
 import { ButtonRow } from './ui/ButtonRow';
@@ -91,11 +92,10 @@ function RaceGoalForm({ initial, onSave, onCancel }: { initial: RaceGoal | null;
         error={dateText && !date ? 'Use dd/mm/aaaa, ex.: 23/11/2026' : undefined}
         fill={false}
       />
-      <Field
+      <TimeField
         label="Tempo-alvo (opcional)"
         value={targetText}
         onChangeText={setTargetText}
-        keyboardType="numbers-and-punctuation"
         placeholder="1:45:00"
         error={targetOk ? undefined : 'Use h:mm:ss ou mm:ss'}
         fill={false}

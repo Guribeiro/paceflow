@@ -50,6 +50,25 @@ describe('Modo Tiros', () => {
     expect(screen.getByText('Média 1:31 · melhor 1:30 · pior 1:32')).toBeOnTheScreen();
   });
 
+  it('pace-alvo digitado só com números vira m:ss', async () => {
+    const user = await openIntervals();
+    await user.type(screen.getByLabelText('Pace-alvo (min/km)'), '350');
+    expect(screen.getByLabelText('Pace-alvo (min/km)')).toHaveDisplayValue('3:50');
+    expect(screen.getByLabelText('400 metros: 1 minuto e 32 segundos')).toBeOnTheScreen();
+  });
+
+  it('volta digitada só com números: "132" é 1:32 e "94" continua sendo 94 s', async () => {
+    const user = await openIntervals();
+    await user.type(screen.getByLabelText(/^Tempo do tiro/), '132');
+    expect(screen.getByLabelText(/^Tempo do tiro/)).toHaveDisplayValue('1:32');
+    await user.press(screen.getByRole('button', { name: 'Adicionar volta' }));
+    await addLaps(user, ['94']);
+
+    expect(screen.getByText(/^1\. 1:32 · melhor$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^2\. 1:34 · pior$/)).toBeOnTheScreen();
+    expect(screen.getByText('Média 1:33 · melhor 1:32 · pior 1:34')).toBeOnTheScreen();
+  });
+
   it('salva a série no diário como treino de pista', async () => {
     const before = workoutRepository.list().length;
     const user = await openIntervals();

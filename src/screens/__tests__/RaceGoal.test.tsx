@@ -40,6 +40,19 @@ describe('Prova-alvo na Evolução', () => {
     expect(screen.getByText(/Registre um treino forte/)).toBeOnTheScreen();
   });
 
+  it('tempo-alvo digitado só com números vira h:mm:ss e é salvo', async () => {
+    const user = userEvent.setup();
+    await render(<TrendsScreen />);
+    await user.press(screen.getByRole('button', { name: 'Definir prova-alvo' }));
+    await user.press(screen.getByRole('radio', { name: '8 semanas' }));
+
+    await user.type(screen.getByLabelText('Tempo-alvo (opcional)'), '14500');
+    expect(screen.getByLabelText('Tempo-alvo (opcional)')).toHaveDisplayValue('1:45:00');
+    await user.press(screen.getByRole('button', { name: 'Salvar prova' }));
+
+    expect(preferencesRepository.getRaceGoal()).toMatchObject({ distanceKm: 21.0975, targetSeconds: 6300 });
+  });
+
   it('projeta a partir do melhor esforço recente e compara com a meta', async () => {
     workoutRepository.create({ date: daysFromNow(-10).toISOString(), distanceMeters: 5000, durationSeconds: 1197, terrain: 'rua' });
     preferencesRepository.setRaceGoal({ distanceKm: 10, date: ddmmyyyy(daysFromNow(30)).split('/').reverse().join('-'), targetSeconds: 2400 });

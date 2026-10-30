@@ -7,7 +7,7 @@ import { useRaceGoal } from '../hooks/useRaceGoal';
 import { useReminderPreferences } from '../hooks/useReminderPreferences';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { ChoiceChips } from './ChoiceChips';
-import { Field } from './Field';
+import { TimeField } from './TimeField';
 import { WeekdayPicker } from './WeekdayPicker';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -87,13 +87,12 @@ export function RemindersSection() {
           />
           <View className="flex-row flex-wrap items-end gap-3">
             <View className="min-w-36 flex-1">
-              <Field
+              <TimeField
                 label="Outro horário"
                 value={timeText}
                 onChangeText={setTimeText}
-                keyboardType="numbers-and-punctuation"
+                kind="clock"
                 placeholder="05:45"
-                maxLength={5}
                 error={timeText && !parsedTime ? 'Use hh:mm, ex.: 05:45' : undefined}
                 fill={false}
               />

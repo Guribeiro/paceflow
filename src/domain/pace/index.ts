@@ -6,3 +6,4 @@ export * from './predictor';
 export * from './parse-distance';
 export * from './training-paces';
 export * from './intervals';
+export * from './time-mask';

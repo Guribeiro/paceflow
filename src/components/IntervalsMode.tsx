@@ -24,6 +24,7 @@ import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { Field } from './Field';
+import { TimeField } from './TimeField';
 import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -48,12 +49,11 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
 
   return (
     <Card gap={3} title="Tempo por tiro" icon="timer">
-      <Field
+      <TimeField
         label={`Pace-alvo (min/${unit})`}
         value={targetText}
         onChangeText={setTargetText}
         placeholder={suggestion}
-        keyboardType="numbers-and-punctuation"
         error={targetText && !fromText ? 'Use mm:ss, ex.: 3:50' : undefined}
         fill={false}
       />
@@ -162,12 +162,11 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
 
       <View className={`${large ? 'flex-col' : 'flex-row items-end'} gap-3`}>
         <View className={large ? '' : 'flex-1'}>
-          <Field
+          <TimeField
             label={`Tempo do tiro ${laps.length + 1}`}
             value={lapText}
             onChangeText={setLapText}
             placeholder="1:32 ou 92"
-            keyboardType="numbers-and-punctuation"
             error={lapError}
             showErrorText={false}
             fill={false}

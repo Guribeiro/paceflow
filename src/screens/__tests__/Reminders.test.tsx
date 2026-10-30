@@ -39,6 +39,28 @@ describe('Lembretes nos Ajustes', () => {
     expect(screen.getByText('Horário: 05:45')).toBeOnTheScreen();
   });
 
+  it('outro horário digitado só com números ganha os ":" e é salvo como hh:mm', async () => {
+    reminderPreferences.update({ training: true });
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+
+    await user.type(screen.getByLabelText('Outro horário'), '545');
+    expect(screen.getByLabelText('Outro horário')).toHaveDisplayValue('5:45');
+    await user.press(screen.getByRole('button', { name: 'Salvar horário' }));
+    expect(reminderPreferences.get().time).toBe('05:45');
+  });
+
+  it('outro horário aceita no máximo quatro dígitos', async () => {
+    reminderPreferences.update({ training: true });
+    const user = userEvent.setup();
+    await render(<SettingsScreen />);
+
+    await user.type(screen.getByLabelText('Outro horário'), '19305');
+    expect(screen.getByLabelText('Outro horário')).toHaveDisplayValue('19:30');
+    await user.press(screen.getByRole('button', { name: 'Salvar horário' }));
+    expect(reminderPreferences.get().time).toBe('19:30');
+  });
+
   it('com a permissão negada, não liga e mostra o caminho nas configurações', async () => {
     mocked.getPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: false } as never);
     const user = userEvent.setup();

@@ -38,22 +38,55 @@ describe('CalculatorScreen', () => {
     expect(screen.getByLabelText(/^10 km: 52 minutos e 7 segundos/)).toBeOnTheScreen();
   });
 
+  describe('máscara do tempo', () => {
+    it('digitar só números põe os ":" sozinho e calcula o pace', async () => {
+      await fillIn('5', '2500');
+      expect(screen.getByLabelText('Tempo')).toHaveDisplayValue('25:00');
+      expect(screen.getByLabelText('Pace: 5 minutos por quilômetro')).toBeOnTheScreen();
+    });
+
+    it('com cinco dígitos o tempo vira h:mm:ss', async () => {
+      await fillIn('10', '10000');
+      expect(screen.getByLabelText('Tempo')).toHaveDisplayValue('1:00:00');
+      expect(screen.getByLabelText('Pace: 6 minutos por quilômetro')).toBeOnTheScreen();
+    });
+
+    it('apagar o último dígito reagrupa o tempo', async () => {
+      const user = await fillIn('5', '2500');
+      await user.type(screen.getByLabelText('Tempo'), '{Backspace}');
+      expect(screen.getByLabelText('Tempo')).toHaveDisplayValue('2:50');
+    });
+
+    it('salva no diário a duração digitada só com números', async () => {
+      const user = await fillIn('5', '2430');
+      await user.press(screen.getByRole('radio', { name: 'Esteira' }));
+      await user.press(screen.getByRole('radio', { name: 'esforço 4' }));
+      await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+      expect(workoutRepository.list().find((w) => w.durationSeconds === 1470)).toMatchObject({
+        distanceMeters: 5000,
+        terrain: 'esteira',
+        rpe: 4,
+      });
+    });
+  });
+
   it('mostra erro para tempo mal formatado e não calcula', async () => {
     await fillIn('5', '5:75');
     expect(screen.getByText('Use mm:ss ou h:mm:ss')).toBeOnTheScreen();
     expect(screen.getByLabelText('Pace: informe distância e tempo')).toBeOnTheScreen();
-    // "5:7" chegou a calcular enquanto digitava; o formulário segue montado, mas sem salvar.
-    expect(screen.getByRole('button', { name: 'Informe distância e tempo' })).toBeDisabled();
+    // Com a máscara, "57" não vira "5:7": o tempo nunca foi válido e não há o que salvar.
+    expect(screen.queryByRole('button', { name: 'Salvar treino' })).toBeNull();
   });
 
   it('corrigir o tempo não apaga o que foi escolhido no registro', async () => {
     const user = await fillIn('5', '25:00');
     await user.press(screen.getByRole('radio', { name: 'Pista' }));
-    await user.type(screen.getByLabelText('Tempo'), 'x');
+    await user.clear(screen.getByLabelText('Tempo'));
+    await user.type(screen.getByLabelText('Tempo'), '575');
     expect(screen.getByRole('button', { name: 'Informe distância e tempo' })).toBeDisabled();
 
     await user.clear(screen.getByLabelText('Tempo'));
-    await user.type(screen.getByLabelText('Tempo'), '24:00');
+    await user.type(screen.getByLabelText('Tempo'), '2400');
     expect(screen.getByRole('radio', { name: 'Pista' })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Salvar treino' })).toBeEnabled();
   });
