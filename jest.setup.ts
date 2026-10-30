@@ -44,3 +44,36 @@ jest.mock('expo-notifications', () => {
     }),
   };
 });
+
+// Tarefas definidas ficam guardadas: os testes chamam `__runTask(nome, corpo)`
+// para simular localizações chegando do serviço do Android.
+type MockTaskExecutor = (body: unknown) => unknown;
+jest.mock('expo-task-manager', () => {
+  const tasks = new Map<string, MockTaskExecutor>();
+  return {
+    defineTask: jest.fn((name: string, executor: MockTaskExecutor) => tasks.set(name, executor)),
+    isTaskDefined: (name: string) => tasks.has(name),
+    __runTask: (name: string, body: unknown) => tasks.get(name)?.(body),
+  };
+});
+
+// GPS com permissão concedida e serviço ligado/desligado em memória.
+jest.mock('expo-location', () => {
+  const started = new Set<string>();
+  return {
+    Accuracy: { BestForNavigation: 6 },
+    requestForegroundPermissionsAsync: jest.fn(() =>
+      Promise.resolve({ granted: true, canAskAgain: true, status: 'granted' }),
+    ),
+    hasServicesEnabledAsync: jest.fn(() => Promise.resolve(true)),
+    startLocationUpdatesAsync: jest.fn((name: string) => {
+      started.add(name);
+      return Promise.resolve();
+    }),
+    stopLocationUpdatesAsync: jest.fn((name: string) => {
+      started.delete(name);
+      return Promise.resolve();
+    }),
+    hasStartedLocationUpdatesAsync: jest.fn((name: string) => Promise.resolve(started.has(name))),
+  };
+});

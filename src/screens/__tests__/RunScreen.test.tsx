@@ -1,0 +1,276 @@
+import { render, screen, userEvent } from '@testing-library/react-native';
+import * as Location from 'expo-location';
+import { Alert, Linking } from 'react-native';
+
+import { preferencesRepository } from '../../data/preferences';
+import { discardRunSession, runRepository } from '../../data/run-session';
+import { workoutRepository } from '../../data/workouts';
+import { type RunSample, applySamples, finishRun, pauseRun, startRun } from '../../domain/run-tracker';
+import { RunScreen } from '../RunScreen';
+
+const location = jest.mocked(Location);
+
+// No passado: com o relógio real, a corrida em andamento tem tempo positivo.
+const T0 = new Date(2026, 9, 20, 7).getTime();
+const METER = 1 / 111_195;
+const north = (meters: number, seconds: number): RunSample => ({
+  latitude: -23.5 + meters * METER,
+  longitude: -46.6,
+  accuracy: 5,
+  timestamp: T0 + seconds * 1000,
+});
+const straight = (fromS: number, toS: number, speed: number) =>
+  Array.from({ length: toS - fromS + 1 }, (_, i) => north(i * speed, fromS + i));
+
+/** 300 m a 3 m/s em 100 s: pace atual 5:33/km. */
+const running = () => applySamples(startRun(T0), straight(0, 100, 3));
+/** 2,4 km a 4 m/s em 10 min: duas parciais de 4:10. */
+const finished = () => finishRun(applySamples(startRun(T0), straight(0, 600, 4)), T0 + 600_000);
+
+const permission = (canAskAgain: boolean): Location.LocationPermissionResponse => ({
+  granted: false,
+  canAskAgain,
+  expires: 'never',
+  status: 'denied' as Location.PermissionStatus,
+});
+
+beforeEach(async () => {
+  preferencesRepository.setUnit('km');
+  await discardRunSession();
+  workoutRepository.list().forEach((w) => workoutRepository.remove(w.id));
+  jest.clearAllMocks();
+});
+
+afterEach(async () => {
+  jest.restoreAllMocks();
+  await discardRunSession();
+});
+
+describe('Correr: parado', () => {
+  it('começa a gravar em km e mostra os números da corrida', async () => {
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+
+    expect(runRepository.get()).toMatchObject({ status: 'running', splitMeters: 1000 });
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('Distância: 0,00 quilômetros')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: sem leitura')).toBeOnTheScreen();
+  });
+
+  it('grava parciais em milhas quando a unidade é milhas', async () => {
+    preferencesRepository.setUnit('mi');
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+    expect(runRepository.get()?.splitMeters).toBeCloseTo(1609.344, 6);
+  });
+
+  it('explica a permissão negada e limpa o aviso ao conseguir começar', async () => {
+    location.requestForegroundPermissionsAsync.mockResolvedValueOnce(permission(true));
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+
+    expect(screen.getByText(/precisa da localização para medir a corrida/)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Abrir configurações' })).toBeNull();
+    expect(runRepository.get()).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+    expect(screen.queryByText(/precisa da localização/)).toBeNull();
+    expect(runRepository.get()?.status).toBe('running');
+  });
+
+  it('com a permissão bloqueada, oferece abrir as configurações', async () => {
+    location.requestForegroundPermissionsAsync.mockResolvedValueOnce(permission(false));
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+
+    expect(screen.getByText(/A localização do PaceFlow está bloqueada/)).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Abrir configurações' }));
+    expect(openSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('avisa quando o GPS está desligado', async () => {
+    location.hasServicesEnabledAsync.mockResolvedValueOnce(false);
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+
+    expect(screen.getByText(/O GPS do aparelho está desligado/)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Abrir configurações' })).toBeNull();
+  });
+
+  it('avisa quando o serviço de localização não inicia', async () => {
+    location.startLocationUpdatesAsync.mockRejectedValueOnce(new Error('falhou'));
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Começar' }));
+
+    expect(screen.getByText('Não foi possível iniciar o GPS. Tente de novo.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Começar' })).toBeEnabled();
+    expect(runRepository.get()).toBeNull();
+  });
+});
+
+describe('Correr: em andamento', () => {
+  it('mostra distância e pace atual falados, e só Pausar', async () => {
+    runRepository.set(running());
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Distância: 0,30 quilômetros')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: 5:33 por quilômetro')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Tempo: /)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Retomar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Finalizar' })).toBeNull();
+  });
+
+  it('mostra distância e pace em milhas', async () => {
+    preferencesRepository.setUnit('mi');
+    runRepository.set(running());
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Distância: 0,19 milhas')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: 8:56 por milha')).toBeOnTheScreen();
+  });
+
+  it('pausada mostra o tempo congelado, Retomar e Finalizar', async () => {
+    runRepository.set(pauseRun(running(), T0 + 100_000));
+    await render(<RunScreen />);
+
+    expect(screen.getByText('⏸ Pausada')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Tempo: 1 minuto e 40 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace atual: sem leitura')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Retomar' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Finalizar' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull();
+  });
+
+  it('pausa, retoma e finaliza pelos botões', async () => {
+    runRepository.set(running());
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Pausar' }));
+    expect(runRepository.get()?.status).toBe('paused');
+    expect(screen.getByText('⏸ Pausada')).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Retomar' }));
+    expect(runRepository.get()?.status).toBe('running');
+    expect(screen.queryByText('⏸ Pausada')).toBeNull();
+
+    await user.press(screen.getByRole('button', { name: 'Pausar' }));
+    await user.press(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(runRepository.get()?.status).toBe('finished');
+    expect(screen.getByText('Corrida finalizada')).toBeOnTheScreen();
+  });
+});
+
+describe('Correr: finalizada', () => {
+  it('mostra o resumo e as parciais faladas', async () => {
+    runRepository.set(finished());
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Distância: 2,40 quilômetros')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Tempo: 10 minutos')).toBeOnTheScreen();
+    expect(screen.getByText('Pace médio: 4:10/km')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 1: 4 minutos e 10 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 2: 4 minutos e 10 segundos')).toBeOnTheScreen();
+  });
+
+  it('chega ao formulário com Rua escolhida e as parciais na nota', async () => {
+    runRepository.set(finished());
+    await render(<RunScreen />);
+
+    expect(screen.getByRole('radio', { name: 'Rua' })).toBeChecked();
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('Parciais (km): 4:10, 4:10');
+    expect(screen.getByRole('button', { name: 'Salvar treino' })).toBeEnabled();
+  });
+
+  it('parciais em milhas na lista e na nota', async () => {
+    preferencesRepository.setUnit('mi');
+    runRepository.set(finishRun(applySamples(startRun(T0, 1609.344), straight(0, 500, 4)), T0 + 500_000));
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Milha 1: 6 minutos e 42 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('Parciais (mi): 6:42');
+  });
+
+  it('salva no diário, limpa a corrida e oferece uma nova', async () => {
+    runRepository.set(finished());
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    const [saved] = workoutRepository.list();
+    expect(workoutRepository.list()).toHaveLength(1);
+    expect(saved).toMatchObject({ durationSeconds: 600, terrain: 'rua', note: 'Parciais (km): 4:10, 4:10' });
+    expect(saved.distanceMeters).toBeCloseTo(2400, 0);
+    expect(runRepository.get()).toBeNull();
+    expect(screen.getByText('✓ Corrida salva no diário')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Nova corrida' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Começar' })).toBeNull();
+  });
+
+  it('comemora o recorde ao salvar', async () => {
+    // 5,005 km em 1001 s: 5 km em 16:40.
+    runRepository.set(finishRun(applySamples(startRun(T0), straight(0, 1001, 5)), T0 + 1_001_000));
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    expect(screen.getByText(/Primeira marca nos 5 km: 16:40/)).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Corrida salva no diário. Primeira marca nos 5 km: 16 minutos e 40 segundos'),
+    ).toBeOnTheScreen();
+  });
+
+  it('corrida curta demais não oferece o formulário', async () => {
+    runRepository.set(finishRun(applySamples(startRun(T0), [north(0, 0), north(8, 4)]), T0 + 5000));
+    await render(<RunScreen />);
+
+    expect(screen.getByText('A corrida ficou curta demais para registrar no diário.')).toBeOnTheScreen();
+    expect(screen.queryByText('Registrar no diário')).toBeNull();
+    // Poucos metros de ruído davam "Pace médio: 10:22:25/mi" no A50.
+    expect(screen.queryByText(/Pace médio/)).toBeNull();
+  });
+
+  it('a partir de 10 m já oferece o formulário', async () => {
+    runRepository.set(finishRun(applySamples(startRun(T0), [north(0, 0), north(12, 5)]), T0 + 5000));
+    await render(<RunScreen />);
+
+    expect(screen.getByText('Registrar no diário')).toBeOnTheScreen();
+    expect(screen.queryByText(/curta demais/)).toBeNull();
+  });
+
+  it('descarta a corrida depois de confirmar', async () => {
+    runRepository.set(finished());
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === 'Descartar')?.onPress?.();
+    });
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Descartar corrida' }));
+
+    expect(alert).toHaveBeenCalledWith('Descartar a corrida?', expect.any(String), expect.any(Array));
+    expect(runRepository.get()).toBeNull();
+    expect(screen.getByRole('button', { name: 'Começar' })).toBeOnTheScreen();
+    expect(workoutRepository.list()).toHaveLength(0);
+  });
+
+  it('mantém a corrida ao cancelar o descarte', async () => {
+    runRepository.set(finished());
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      buttons?.find((b) => b.text === 'Cancelar')?.onPress?.();
+    });
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Descartar corrida' }));
+
+    expect(runRepository.get()?.status).toBe('finished');
+    expect(screen.getByText('Corrida finalizada')).toBeOnTheScreen();
+  });
+});

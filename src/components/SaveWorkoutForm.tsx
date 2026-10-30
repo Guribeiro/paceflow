@@ -21,12 +21,17 @@ interface Props {
   /** null enquanto distância ou tempo estão inválidos: o formulário segue montado e o botão desativa. */
   distanceKm: number | null;
   durationSeconds: number | null;
+  /** Valores iniciais (a corrida gravada já chega como "Rua" e com as parciais na nota). */
+  initialTerrain?: Terrain;
+  initialNote?: string;
+  /** Depois de salvar, com a comemoração de recorde (se houver). */
+  onSaved?: (celebration: { text: string; spoken: string } | null) => void;
 }
 
-export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
-  const [terrain, setTerrain] = useState<Terrain | undefined>();
+export function SaveWorkoutForm({ distanceKm, durationSeconds, initialTerrain, initialNote = '', onSaved }: Props) {
+  const [terrain, setTerrain] = useState<Terrain | undefined>(initialTerrain);
   const [rpe, setRpe] = useState<number | undefined>();
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(initialNote);
   const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [celebration, setCelebration] = useState<{ text: string; spoken: string } | null>(null);
   // Esforço já salvo: o botão só reativa quando o esforço ou algum campo muda,
@@ -64,11 +69,13 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds }: Props) {
       shoeId: shoeId === NO_SHOE ? undefined : shoeId,
     });
     if (result.ok) {
+      const message = recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before);
       setStatus('saved');
-      setCelebration(recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before));
+      setCelebration(message);
       setSavedEffort(effortKey);
       setRpe(undefined);
       setNote('');
+      onSaved?.(message);
     } else {
       setStatus('error');
     }

@@ -28,6 +28,14 @@
       "expo-sharing",
       "expo-notifications",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O PaceFlow usa a localização para medir distância e pace enquanto você grava uma corrida.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
         "expo-widgets",
         {
           "enableAndroid": true,
