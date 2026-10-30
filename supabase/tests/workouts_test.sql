@@ -1,6 +1,6 @@
 -- Testes de RLS e do trigger de public.workouts. Rodar com: supabase test db
 begin;
-select plan(14);
+select plan(22);
 
 insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'a@paceflow.test', 'authenticated', 'authenticated'),
@@ -63,6 +63,62 @@ select throws_ok(
      values ('a\b', now(), 1000, 300, 'rua', now(), now()) $$,
   '23514', null,
   'id fora do formato seguro é rejeitado'
+);
+
+-- Parciais (workouts_splits_check): as duas colunas juntas ou nenhuma
+select lives_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-ok', now(), 3000, 915, 'rua', '{310, 305.4, 299.6}', 1000, now(), now()) $$,
+  'parciais válidas são aceitas'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, created_at, updated_at)
+     values ('split-only', now(), 3000, 915, 'rua', '{310}', now(), now()) $$,
+  '23514', null,
+  'parciais sem split_meters são rejeitadas'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, split_meters, created_at, updated_at)
+     values ('meters-only', now(), 3000, 915, 'rua', 1000, now(), now()) $$,
+  '23514', null,
+  'split_meters sem parciais é rejeitado'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-empty', now(), 3000, 915, 'rua', '{}', 1000, now(), now()) $$,
+  '23514', null,
+  'lista de parciais vazia é rejeitada'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-zero', now(), 3000, 915, 'rua', '{310, 0}', 1000, now(), now()) $$,
+  '23514', null,
+  'parcial igual a zero é rejeitada'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-neg', now(), 3000, 915, 'rua', '{-5}', 1000, now(), now()) $$,
+  '23514', null,
+  'parcial negativa é rejeitada'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-nan', now(), 3000, 915, 'rua', '{NaN}', 1000, now(), now()) $$,
+  '23514', null,
+  'parcial NaN é rejeitada'
+);
+
+select throws_ok(
+  $$ insert into public.workouts (id, date, distance_meters, duration_seconds, terrain, splits, split_meters, created_at, updated_at)
+     values ('split-inf', now(), 3000, 915, 'rua', '{310}', 'Infinity', now(), now()) $$,
+  '23514', null,
+  'split_meters infinito é rejeitado'
 );
 
 -- Usuário B não vê nem altera os treinos de A

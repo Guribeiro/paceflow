@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
+import { SplitList } from '../components/SplitList';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
 import { workoutRepository } from '../data/workouts';
 import {
@@ -13,7 +14,7 @@ import {
   formatDuration,
   spokenDuration,
 } from '../domain/pace';
-import { TERRAIN_LABELS, type Workout } from '../domain/workout';
+import { TERRAIN_LABELS, type Workout, splitUnit } from '../domain/workout';
 import { summarizeWeek } from '../domain/workout-summary';
 import { type Shoe, isActiveShoe } from '../domain/shoe';
 import { shoeMileage, shoeStatus } from '../domain/shoe-mileage';
@@ -24,6 +25,7 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { confirmDestructive } from '../components/ui/confirm';
+import { Disclosure } from '../components/ui/Disclosure';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { display } from '../components/ui/typography';
@@ -115,6 +117,11 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
       ) : (
         <>
           <WorkoutDetails workout={workout} unit={unit} shoeName={shoeName} />
+          {workout.splits && workout.splitMeters ? (
+            <Disclosure showLabel="Ver parciais" hideLabel="Ocultar parciais">
+              <SplitList splits={workout.splits} unit={splitUnit(workout.splitMeters)} />
+            </Disclosure>
+          ) : null}
           <View className="flex-row flex-wrap justify-end gap-6">
             <Button label="Editar" variant="link" accessibilityLabel="Editar treino" onPress={() => setEditing(true)} />
             <Button

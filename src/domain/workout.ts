@@ -1,3 +1,5 @@
+import type { DistanceUnit } from './pace';
+
 export const TERRAINS = ['rua', 'pista', 'esteira'] as const;
 export type Terrain = (typeof TERRAINS)[number];
 
@@ -10,6 +12,8 @@ export const TERRAIN_LABELS: Record<Terrain, string> = {
 export const RPE_MIN = 1;
 export const RPE_MAX = 10;
 export const NOTE_MAX_LENGTH = 280;
+/** Parciais guardadas por treino; uma ultramaratona em km cabe com folga. */
+export const SPLITS_MAX = 500;
 
 export interface Workout {
   id: string;
@@ -23,6 +27,10 @@ export interface Workout {
   note?: string;
   /** Tênis usado (id de Shoe). */
   shoeId?: string;
+  /** Duração de cada parcial fechada (s), na ordem; só em corridas gravadas pelo GPS. */
+  splits?: number[];
+  /** Tamanho das parciais (1000 m ou uma milha); presente junto com `splits`. */
+  splitMeters?: number;
   createdAt: string;
   updatedAt: string;
   /** Soft delete: preserva o registro para uma futura sincronização. */
@@ -40,6 +48,21 @@ export const isIsoDate = (value: unknown): value is string =>
 
 const isPositiveNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+/** Unidade das parciais: a da gravação, mesmo que a preferência mude depois. */
+export const splitUnit = (splitMeters: number): DistanceUnit => (splitMeters === 1000 ? 'km' : 'mi');
+
+/** Parciais e tamanho vêm juntos: as duas ausentes ou as duas válidas. */
+export function isValidSplits(splits: unknown, splitMeters: unknown): boolean {
+  if (splits === undefined && splitMeters === undefined) return true;
+  return (
+    isPositiveNumber(splitMeters) &&
+    Array.isArray(splits) &&
+    splits.length > 0 &&
+    splits.length <= SPLITS_MAX &&
+    splits.every(isPositiveNumber)
+  );
+}
 
 // O id vira parte da chave no armazenamento; o MMKV na web rejeita "\".
 const SAFE_ID = /^[A-Za-z0-9-]{1,64}$/;
@@ -61,6 +84,7 @@ export function parseWorkoutRecord(value: unknown): Workout | null {
     isTerrain(w.terrain) &&
     (w.rpe === undefined || isValidRpe(w.rpe)) &&
     (w.note === undefined || (typeof w.note === 'string' && w.note.length <= NOTE_MAX_LENGTH)) &&
-    (w.shoeId === undefined || isSafeId(w.shoeId));
+    (w.shoeId === undefined || isSafeId(w.shoeId)) &&
+    isValidSplits(w.splits, w.splitMeters);
   return valid ? (w as unknown as Workout) : null;
 }

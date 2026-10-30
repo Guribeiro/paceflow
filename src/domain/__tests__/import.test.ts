@@ -60,7 +60,7 @@ describe('parseWorkoutsBackup', () => {
   it.each([
     ['app diferente', backup([], { app: 'Strava' })],
     ['sem app', JSON.stringify({ schemaVersion: 1, workouts: [] })],
-    ['versão futura', backup([], { schemaVersion: 3 })],
+    ['versão futura', backup([], { schemaVersion: 4 })],
     ['workouts não é lista', backup([], { workouts: {} })],
   ])('UNSUPPORTED_FORMAT: %s', (_label, input) => {
     expect(parseWorkoutsBackup(input)).toEqual({ ok: false, error: 'UNSUPPORTED_FORMAT' });
@@ -94,3 +94,40 @@ describe('parseWorkoutsBackup com tênis (versão 2)', () => {
   });
 });
 
+
+describe('parseWorkoutsBackup com parciais (versão 3)', () => {
+  const withSplits = workout({ splits: [310, 305.4, 299.6], splitMeters: 1000 });
+
+  it('lê de volta as parciais que a exportação gera', () => {
+    const result = parseWorkoutsBackup(workoutsToJson([withSplits], new Date()));
+    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], invalid: 0 } });
+  });
+
+  it('aceita backup versão 3 com parciais em milhas', () => {
+    const mile = workout({ splits: [402], splitMeters: 1609.344 });
+    const result = parseWorkoutsBackup(backup([mile], { schemaVersion: 3, shoes: [] }));
+    expect(result).toEqual({ ok: true, value: { workouts: [mile], shoes: [], invalid: 0 } });
+  });
+
+  it('backup versão 2 continua aceito, sem parciais', () => {
+    const result = parseWorkoutsBackup(backup([workout()], { schemaVersion: 2, shoes: [] }));
+    expect(result).toEqual({ ok: true, value: { workouts: [workout()], shoes: [], invalid: 0 } });
+    expect(result.ok && result.value.workouts[0]).not.toHaveProperty('splits');
+  });
+
+  it('descarta e conta treinos com parciais malformadas', () => {
+    const result = parseWorkoutsBackup(
+      backup(
+        [
+          withSplits,
+          { ...workout({ id: 'b2' }), splits: [310] },
+          { ...workout({ id: 'c3' }), splits: [], splitMeters: 1000 },
+          { ...workout({ id: 'd4' }), splits: [310, 0], splitMeters: 1000 },
+          { ...workout({ id: 'e5' }), splits: ['5:10'], splitMeters: 1000 },
+        ],
+        { schemaVersion: 3 },
+      ),
+    );
+    expect(result).toEqual({ ok: true, value: { workouts: [withSplits], shoes: [], invalid: 4 } });
+  });
+});

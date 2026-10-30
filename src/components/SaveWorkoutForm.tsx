@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Text } from 'react-native';
 
 import { workoutRepository } from '../data/workouts';
-import { NOTE_MAX_LENGTH, type Terrain } from '../domain/workout';
+import { NOTE_MAX_LENGTH, type Terrain, type Workout } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
 import { shoeRepository } from '../data/shoes';
 import { newRecords, personalRecords } from '../domain/personal-records';
@@ -20,14 +20,23 @@ interface Props {
   /** null enquanto distância ou tempo estão inválidos: o formulário segue montado e o botão desativa. */
   distanceKm: number | null;
   durationSeconds: number | null;
-  /** Valores iniciais (a corrida gravada já chega como "Rua" e com as parciais na nota). */
+  /** Valores iniciais (a corrida gravada já chega como "Rua"). */
   initialTerrain?: Terrain;
   initialNote?: string;
+  /** Parciais da corrida gravada pelo GPS, salvas junto com o treino. */
+  splits?: Pick<Workout, 'splits' | 'splitMeters'>;
   /** Depois de salvar, com a comemoração de recorde (se houver). */
   onSaved?: (celebration: { text: string; spoken: string } | null) => void;
 }
 
-export function SaveWorkoutForm({ distanceKm, durationSeconds, initialTerrain, initialNote = '', onSaved }: Props) {
+export function SaveWorkoutForm({
+  distanceKm,
+  durationSeconds,
+  initialTerrain,
+  initialNote = '',
+  splits,
+  onSaved,
+}: Props) {
   const [terrain, setTerrain] = useState<Terrain | undefined>(initialTerrain);
   const [rpe, setRpe] = useState<number | undefined>();
   const [note, setNote] = useState(initialNote);
@@ -66,6 +75,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds, initialTerrain, i
       rpe,
       note,
       shoeId: shoeId === NO_SHOE ? undefined : shoeId,
+      ...splits,
     });
     if (result.ok) {
       const message = recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before);

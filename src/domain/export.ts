@@ -1,6 +1,6 @@
 import { formatDuration } from './pace/time-format';
 import type { Shoe } from './shoe';
-import { TERRAIN_LABELS, type Workout } from './workout';
+import { TERRAIN_LABELS, type Workout, splitUnit } from './workout';
 
 export type ExportFormat = 'csv' | 'json';
 
@@ -9,8 +9,9 @@ export const EXPORT_MIME_TYPES: Record<ExportFormat, string> = {
   json: 'application/json',
 };
 
-// v2: tênis (shoes) e workouts[].shoeId. O import aceita v1 e v2.
-const EXPORT_SCHEMA_VERSION = 2;
+// v2: tênis (shoes) e workouts[].shoeId. v3: workouts[].splits e splitMeters.
+// O import aceita da v1 à v3.
+const EXPORT_SCHEMA_VERSION = 3;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const localDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -44,7 +45,14 @@ const CSV_HEADER = [
   'rpe',
   'nota',
   'tenis',
+  'parciais',
 ];
+
+/** Ex.: "km: 5:10, 5:05"; parciais em milha só quando o tamanho é uma milha. */
+function splitsField(w: Workout): string {
+  if (!w.splits || !w.splitMeters) return '';
+  return `${splitUnit(w.splitMeters)}: ${w.splits.map(formatDuration).join(', ')}`;
+}
 
 /**
  * CSV no padrão do Excel em pt-BR: separador ";", vírgula decimal, CRLF e BOM
@@ -67,6 +75,7 @@ export function workoutsToCsv(workouts: readonly Workout[], shoes: readonly Shoe
       w.rpe !== undefined ? String(w.rpe) : '',
       csvField(w.note ?? ''),
       csvField((w.shoeId && shoeNames.get(w.shoeId)) ?? ''),
+      splitsField(w),
     ].join(';');
   });
 

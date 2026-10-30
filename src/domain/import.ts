@@ -11,7 +11,7 @@ export interface ParsedBackup {
   invalid: number;
 }
 
-const SUPPORTED_SCHEMA_VERSION = 2;
+const SUPPORTED_SCHEMA_VERSION = 3;
 
 /** Lê um backup gerado por workoutsToJson. Registros inválidos são descartados e contados. */
 export function parseWorkoutsBackup(json: string): Result<ParsedBackup, ImportError> {

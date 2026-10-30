@@ -296,6 +296,89 @@ describe('WorkoutRepository', () => {
     });
   });
 
+  describe('parciais', () => {
+    it('cria o treino com as parciais e o tamanho delas', () => {
+      const { storage, repo } = setup();
+      const workout = created(repo.create({ ...base, splits: [310, 305.4], splitMeters: 1000 }));
+      expect(workout).toEqual({
+        ...base,
+        splits: [310, 305.4],
+        splitMeters: 1000,
+        id: 'id-1',
+        createdAt: '2026-10-29T10:00:00.000Z',
+        updatedAt: '2026-10-29T10:00:00.000Z',
+        deletedAt: null,
+      });
+      expect(createWorkoutRepository(storage).getById('id-1')).toEqual(workout);
+    });
+
+    it('guarda uma cópia: mexer na lista depois não altera o treino', () => {
+      const { repo } = setup();
+      const splits = [310, 305];
+      created(repo.create({ ...base, splits, splitMeters: 1000 }));
+      splits.push(1);
+      expect(repo.getById('id-1')?.splits).toEqual([310, 305]);
+    });
+
+    it.each([
+      [{ splits: [310] }],
+      [{ splitMeters: 1000 }],
+      [{ splits: [], splitMeters: 1000 }],
+      [{ splits: [310, 0], splitMeters: 1000 }],
+      [{ splits: [-1], splitMeters: 1000 }],
+      [{ splits: [NaN], splitMeters: 1000 }],
+      [{ splits: [310], splitMeters: 0 }],
+      [{ splits: Array<number>(501).fill(300), splitMeters: 1000 }],
+    ])('%p → INVALID_SPLITS sem gravar', (patch) => {
+      const { repo } = setup();
+      expect(repo.create({ ...base, ...patch })).toEqual({ ok: false, error: 'INVALID_SPLITS' });
+      expect(repo.list()).toEqual([]);
+    });
+
+    it('update preserva as parciais ao editar outros campos', () => {
+      const { repo } = setup();
+      created(repo.create({ ...base, splits: [310, 305.4], splitMeters: 1609.344 }));
+      const result = repo.update('id-1', { terrain: 'pista', rpe: 7, note: 'Tiros', distanceMeters: 3300 });
+      expect(result).toMatchObject({
+        ok: true,
+        value: { terrain: 'pista', distanceMeters: 3300, splits: [310, 305.4], splitMeters: 1609.344 },
+      });
+      expect(repo.getById('id-1')).toMatchObject({ splits: [310, 305.4], splitMeters: 1609.344 });
+    });
+
+    it('update de treino sem parciais não cria os campos', () => {
+      const { repo } = setup();
+      created(repo.create(base));
+      const result = repo.update('id-1', { rpe: 5 });
+      if (!result.ok) throw new Error(result.error);
+      expect(result.value).not.toHaveProperty('splits');
+      expect(result.value).not.toHaveProperty('splitMeters');
+    });
+
+    it('update ignora parciais enviadas no patch', () => {
+      const { repo } = setup();
+      created(repo.create({ ...base, splits: [310], splitMeters: 1000 }));
+      // O tipo não permite, mas um chamador sem tipos não deve conseguir trocar as parciais.
+      repo.update('id-1', { splits: [1, 2], splitMeters: 1609.344 } as never);
+      expect(repo.getById('id-1')).toMatchObject({ splits: [310], splitMeters: 1000 });
+    });
+
+    it('importação aceita treino com parciais', () => {
+      const { repo } = setup();
+      const imported: Workout = {
+        ...base,
+        id: 'imp-1',
+        splits: [310],
+        splitMeters: 1000,
+        createdAt: '2026-10-20T10:00:00.000Z',
+        updatedAt: '2026-10-20T10:00:00.000Z',
+        deletedAt: null,
+      };
+      expect(repo.importWorkouts([imported])).toEqual({ added: 1, updated: 0, unchanged: 0 });
+      expect(repo.getById('imp-1')).toEqual(imported);
+    });
+  });
+
   describe('validação', () => {
     it.each([
       [{ distanceMeters: 0 }, 'INVALID_DISTANCE'],

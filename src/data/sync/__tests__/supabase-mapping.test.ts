@@ -1,4 +1,4 @@
-import type { Workout } from '../../../domain/workout';
+import { type Workout, parseWorkoutRecord } from '../../../domain/workout';
 import type { Database } from '../database.types';
 import { parsePreferencesRecord } from '../../../domain/preferences';
 import {
@@ -26,6 +26,8 @@ const row: Row = {
   updated_at: '2026-10-29T08:00:00.123456+00:00',
   deleted_at: null,
   shoe_id: null,
+  splits: null,
+  split_meters: null,
   server_updated_at: '2026-10-29T12:00:00.987654+00:00',
 };
 
@@ -86,10 +88,52 @@ describe('toWorkoutRow', () => {
       rpe: null,
       note: null,
       shoe_id: null,
+      splits: null,
+      split_meters: null,
       created_at: '2026-10-29T07:30:00.000Z',
       updated_at: '2026-10-29T08:00:00.000Z',
       deleted_at: null,
     });
+  });
+});
+
+describe('parciais', () => {
+  it('splits e split_meters viram splits e splitMeters', () => {
+    const w = fromWorkoutRow({ ...row, splits: [310, 305.4], split_meters: 1609.344 });
+    expect(w).toMatchObject({ splits: [310, 305.4], splitMeters: 1609.344 });
+    expect(parseWorkoutRecord(w)).not.toBeNull();
+  });
+
+  it('colunas nulas não criam os campos', () => {
+    const w = fromWorkoutRow(row);
+    expect(w).not.toHaveProperty('splits');
+    expect(w).not.toHaveProperty('splitMeters');
+  });
+
+  it('ida e volta preserva as parciais', () => {
+    const workout: Workout = {
+      id: 'abc-1',
+      date: '2026-10-29T07:00:00.000Z',
+      distanceMeters: 5000,
+      durationSeconds: 1500,
+      terrain: 'rua',
+      splits: [310, 305.4, 299.6],
+      splitMeters: 1000,
+      createdAt: '2026-10-29T07:30:00.000Z',
+      updatedAt: '2026-10-29T08:00:00.000Z',
+      deletedAt: null,
+    };
+    const sent = toWorkoutRow(workout);
+    expect(sent).toMatchObject({ splits: [310, 305.4, 299.6], split_meters: 1000 });
+    const { serverUpdatedAt: _s, ...back } = fromWorkoutRow({
+      ...row,
+      ...sent,
+      rpe: null,
+      note: null,
+      shoe_id: null,
+      deleted_at: null,
+    } as Row);
+    expect(back).toEqual(workout);
   });
 });
 

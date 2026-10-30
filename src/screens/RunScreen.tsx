@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { KeyboardAware } from '../components/KeyboardAware';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
+import { SplitList } from '../components/SplitList';
 import { Button } from '../components/ui/Button';
 import { ButtonRow } from '../components/ui/ButtonRow';
 import { Card } from '../components/ui/Card';
@@ -13,7 +14,7 @@ import { ON_BRAND } from '../components/ui/palette';
 import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { StatTile } from '../components/ui/StatTile';
-import { display, tabular } from '../components/ui/typography';
+import { tabular } from '../components/ui/typography';
 import {
   type StartResult,
   discardRunSession,
@@ -24,7 +25,7 @@ import {
 } from '../data/run-session';
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
 import { type RunState, currentPace, elapsedMs, splitDurations } from '../domain/run-tracker';
-import { NOTE_MAX_LENGTH } from '../domain/workout';
+import { splitUnit } from '../domain/workout';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useRunSession } from '../hooks/useRunSession';
 
@@ -38,47 +39,10 @@ const START_ERRORS: Record<Exclude<StartResult, 'started'>, string> = {
   'gps-off': 'O GPS do aparelho está desligado. Ative a localização e toque em Começar de novo.',
 };
 
-/** Unidade das parciais: a da gravação, mesmo que a preferência mude no meio. */
-const splitUnit = (run: RunState): DistanceUnit => (run.splitMeters === SPLIT_METERS.km ? 'km' : 'mi');
+/** Décimos de segundo bastam para as parciais guardadas no treino. */
+const roundSplit = (seconds: number) => Math.round(seconds * 10) / 10;
 
 const perUnit = (secondsPerKm: number, unit: DistanceUnit) => (unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
-
-function SplitList({ run }: { run: RunState }) {
-  const splits = splitDurations(run);
-  const unit = splitUnit(run);
-  if (splits.length === 0) return null;
-  // Só destaca quando uma parcial é a única mais rápida no segundo exibido (empate não tem destaque).
-  const shown = splits.map(Math.round);
-  const min = Math.min(...shown);
-  const fastest = shown.length > 1 && shown.filter((s) => s === min).length === 1 ? shown.indexOf(min) : -1;
-  return (
-    <Card gap={0} title="Parciais" icon="flag">
-      {splits.map((seconds, i) => {
-        // A mais rápida marcada por texto, não só pela cor.
-        const best = i === fastest;
-        return (
-          <View
-            key={i}
-            accessible
-            accessibilityLabel={`${unit === 'km' ? 'Quilômetro' : 'Milha'} ${i + 1}: ${spokenDuration(seconds)}${best ? ', a mais rápida' : ''}`}
-            className={`min-h-12 flex-row items-center justify-between ${i > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''}`}
-          >
-            <Text className="text-lg text-ink dark:text-ink-dark">
-              {i + 1} {unit}
-              {best ? ' · mais rápida' : ''}
-            </Text>
-            <Text
-              className={`text-xl font-bold ${best ? 'text-brand-ink dark:text-brand-ink-dark' : 'text-ink dark:text-ink-dark'}`}
-              style={display}
-            >
-              {formatDuration(seconds)}
-            </Text>
-          </View>
-        );
-      })}
-    </Card>
-  );
-}
 
 function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: DistanceUnit }) {
   const seconds = Math.floor(elapsedMs(run, now) / 1000);
@@ -126,7 +90,7 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
       {lastSplit !== undefined ? (
         <Card variant="soft" gap={0}>
           <Text className="text-lg font-semibold text-ink dark:text-ink-dark" style={tabular}>
-            Última parcial ({splits.length} {splitUnit(run)}):{' '}
+            Última parcial ({splits.length} {splitUnit(run.splitMeters)}):{' '}
             <Text className="font-bold text-brand-ink dark:text-brand-ink-dark">{formatDuration(lastSplit)}</Text>
           </Text>
         </Card>
@@ -161,7 +125,6 @@ function FinishedRun({
   const seconds = Math.round(run.movingMs / 1000);
   const km = run.distanceMeters / 1000;
   const splits = splitDurations(run);
-  const note = splits.length > 0 ? `Parciais (${splitUnit(run)}): ${splits.map(formatDuration).join(', ')}`.slice(0, NOTE_MAX_LENGTH) : '';
   const canSave = run.distanceMeters >= MIN_SAVE_METERS && seconds > 0;
   // Poucos metros de ruído do GPS dariam um pace absurdo (ex.: 10:22:25/mi).
   const average = canSave ? perUnit(seconds / km, unit) : null;
@@ -190,14 +153,18 @@ function FinishedRun({
           className=""
         />
       ) : null}
-      <SplitList run={run} />
+      {splits.length > 0 ? (
+        <Card gap={0} title="Parciais" icon="flag">
+          <SplitList splits={splits} unit={splitUnit(run.splitMeters)} />
+        </Card>
+      ) : null}
 
       {canSave ? (
         <SaveWorkoutForm
           distanceKm={km}
           durationSeconds={seconds}
           initialTerrain="rua"
-          initialNote={note}
+          splits={splits.length > 0 ? { splits: splits.map(roundSplit), splitMeters: run.splitMeters } : undefined}
           onSaved={onSaved}
         />
       ) : (

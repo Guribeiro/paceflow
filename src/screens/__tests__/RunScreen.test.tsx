@@ -183,22 +183,53 @@ describe('Correr: finalizada', () => {
     expect(screen.getByLabelText('Quilômetro 2: 4 minutos e 10 segundos')).toBeOnTheScreen();
   });
 
-  it('chega ao formulário com Rua escolhida e as parciais na nota', async () => {
+  it('chega ao formulário com Rua escolhida e a nota vazia (as parciais não vão para a nota)', async () => {
     runRepository.set(finished());
     await render(<RunScreen />);
 
     expect(screen.getByRole('radio', { name: 'Rua' })).toBeChecked();
-    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('Parciais (km): 4:10, 4:10');
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('');
     expect(screen.getByRole('button', { name: 'Salvar treino' })).toBeEnabled();
   });
 
-  it('parciais em milhas na lista e na nota', async () => {
+  it('parciais em milhas na lista e salvas no treino com o tamanho de uma milha', async () => {
     preferencesRepository.setUnit('mi');
     runRepository.set(finishRun(applySamples(startRun(T0, 1609.344), straight(0, 500, 4)), T0 + 500_000));
+    const user = userEvent.setup();
     await render(<RunScreen />);
 
     expect(screen.getByLabelText('Milha 1: 6 minutos e 42 segundos')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('Parciais (mi): 6:42');
+    expect(screen.getByLabelText('Nota (opcional)')).toHaveDisplayValue('');
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    const [saved] = workoutRepository.list();
+    expect(saved).toMatchObject({ splits: [402.3], splitMeters: 1609.344 });
+    expect(saved).not.toHaveProperty('note');
+  });
+
+  it('arredonda as parciais salvas a décimos de segundo', async () => {
+    // 4:10,04 e 4:09,96.
+    runRepository.set(withSplits(250_040, 500_000));
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    expect(workoutRepository.list()[0]).toMatchObject({ splits: [250, 250], splitMeters: 1000 });
+  });
+
+  it('corrida sem parcial fechada salva o treino sem parciais', async () => {
+    // 900 m: nenhum quilômetro completo.
+    runRepository.set(finishRun(applySamples(startRun(T0), straight(0, 300, 3)), T0 + 300_000));
+    const user = userEvent.setup();
+    await render(<RunScreen />);
+
+    expect(screen.queryByText('Parciais')).toBeNull();
+    await user.press(screen.getByRole('button', { name: 'Salvar treino' }));
+
+    const [saved] = workoutRepository.list();
+    expect(workoutRepository.list()).toHaveLength(1);
+    expect(saved).not.toHaveProperty('splits');
+    expect(saved).not.toHaveProperty('splitMeters');
   });
 
   it('salva no diário, limpa a corrida e oferece uma nova', async () => {
@@ -209,7 +240,8 @@ describe('Correr: finalizada', () => {
 
     const [saved] = workoutRepository.list();
     expect(workoutRepository.list()).toHaveLength(1);
-    expect(saved).toMatchObject({ durationSeconds: 600, terrain: 'rua', note: 'Parciais (km): 4:10, 4:10' });
+    expect(saved).toMatchObject({ durationSeconds: 600, terrain: 'rua', splits: [250, 250], splitMeters: 1000 });
+    expect(saved).not.toHaveProperty('note');
     expect(saved.distanceMeters).toBeCloseTo(2400, 0);
     expect(runRepository.get()).toBeNull();
     expect(screen.getByText('✓ Corrida salva no diário')).toBeOnTheScreen();

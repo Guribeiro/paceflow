@@ -174,3 +174,62 @@ describe('WorkoutLogScreen', () => {
     });
   });
 });
+
+describe('WorkoutLogScreen: parciais salvas', () => {
+  function addRun(extra: { splits?: number[]; splitMeters?: number } = {}) {
+    const result = workoutRepository.create({
+      date: new Date().toISOString(),
+      distanceMeters: 3000,
+      durationSeconds: 915,
+      terrain: 'rua',
+      ...extra,
+    });
+    if (!result.ok) throw new Error(result.error);
+    return result.value;
+  }
+
+  // O MMKV é compartilhado com os testes acima: cada teste começa com o diário vazio.
+  beforeEach(() => {
+    workoutRepository.list().forEach((w) => workoutRepository.remove(w.id));
+  });
+
+  it('mostra Ver parciais só no treino que tem parciais', async () => {
+    addRun();
+    addRun({ splits: [310, 299.6, 305], splitMeters: 1000 });
+    await render(<WorkoutLogScreen />);
+
+    expect(screen.getAllByRole('button', { name: 'Editar treino' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Ver parciais' })).toHaveLength(1);
+  });
+
+  it('abre a lista com a parcial mais rápida em destaque e fecha de novo', async () => {
+    addRun({ splits: [310, 299.6, 305], splitMeters: 1000 });
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+
+    expect(screen.queryByLabelText(/^Quilômetro \d: /)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ver parciais' })).toBeCollapsed();
+
+    await user.press(screen.getByRole('button', { name: 'Ver parciais' }));
+
+    expect(screen.getByRole('button', { name: 'Ocultar parciais' })).toBeExpanded();
+    expect(screen.getByLabelText('Quilômetro 1: 5 minutos e 10 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 2: 5 minutos, a mais rápida')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 3: 5 minutos e 5 segundos')).toBeOnTheScreen();
+    expect(screen.getByText('2 km · mais rápida')).toBeOnTheScreen();
+    expect(screen.getAllByText(/mais rápida/)).toHaveLength(1);
+
+    await user.press(screen.getByRole('button', { name: 'Ocultar parciais' }));
+    expect(screen.queryByLabelText(/^Quilômetro \d: /)).toBeNull();
+  });
+
+  it('parciais em milha usam a unidade da gravação', async () => {
+    addRun({ splits: [402.3], splitMeters: 1609.344 });
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+
+    await user.press(screen.getByRole('button', { name: 'Ver parciais' }));
+    expect(screen.getByLabelText('Milha 1: 6 minutos e 42 segundos')).toBeOnTheScreen();
+    expect(screen.getByText('1 mi')).toBeOnTheScreen();
+  });
+});
