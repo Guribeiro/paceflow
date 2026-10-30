@@ -53,14 +53,14 @@ export type Database = {
                   ]
                 },"workouts": {
                   Row: {
-                    "created_at": string,"date": string,"deleted_at": string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note": string | null,"rpe": number | null,"server_updated_at": string,"shoe_id": string | null,"split_meters": number | null,"splits": number[] | null,"terrain": string,"updated_at": string,"user_id": string
+                    "created_at": string,"date": string,"deleted_at": string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note": string | null,"rpe": number | null,"server_updated_at": string,"shoe_id": string | null,"split_meters": number | null,"splits": (number)[] | null,"terrain": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at": string,"date": string,"deleted_at"?: string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"split_meters"?: number | null,"splits"?: number[] | null,"terrain": string,"updated_at": string,"user_id"?: string
+                    "created_at": string,"date": string,"deleted_at"?: string | null,"distance_meters": number,"duration_seconds": number,"id": string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"split_meters"?: number | null,"splits"?: (number)[] | null,"terrain": string,"updated_at": string,"user_id"?: string
                   }
                   Update: {
-                    "created_at"?: string,"date"?: string,"deleted_at"?: string | null,"distance_meters"?: number,"duration_seconds"?: number,"id"?: string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"split_meters"?: number | null,"splits"?: number[] | null,"terrain"?: string,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"date"?: string,"deleted_at"?: string | null,"distance_meters"?: number,"duration_seconds"?: number,"id"?: string,"note"?: string | null,"rpe"?: number | null,"server_updated_at"?: string,"shoe_id"?: string | null,"split_meters"?: number | null,"splits"?: (number)[] | null,"terrain"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     
