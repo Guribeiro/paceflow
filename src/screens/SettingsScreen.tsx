@@ -8,6 +8,7 @@ import { AccountSection } from '../components/AccountSection';
 import { BackupSection } from '../components/BackupSection';
 import { ChoiceChips } from '../components/ChoiceChips';
 import { ShoesSection } from '../components/ShoesSection';
+import { VoiceSection } from '../components/VoiceSection';
 import { WeeklyGoalSetting } from '../components/WeeklyGoalSetting';
 import type { ThemePreference } from '../data/repositories/preferences-repository';
 import type { DistanceUnit } from '../domain/pace';
@@ -46,6 +47,7 @@ export function SettingsScreen() {
           </Card>
           <WeeklyGoalSetting unit={unit} />
           <RemindersSection />
+          <VoiceSection unit={unit} />
           <ShoesSection unit={unit} />
           <BackupSection canExport={workouts.length > 0} />
 

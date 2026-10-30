@@ -10,6 +10,7 @@ import {
   startRun,
 } from '../domain/run-tracker';
 import { createRunRepository } from './repositories/run-repository';
+import { announceSplit } from './run-voice';
 import { storage } from './storage/mmkv';
 
 export const runRepository = createRunRepository(storage);
@@ -28,7 +29,9 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RUN_TASK, async
     accuracy: l.coords.accuracy ?? null,
     timestamp: l.timestamp,
   }));
-  runRepository.set(applySamples(state, samples));
+  const next = applySamples(state, samples);
+  runRepository.set(next);
+  announceSplit(state, next);
 });
 
 export type StartResult = 'started' | 'denied' | 'blocked' | 'gps-off';

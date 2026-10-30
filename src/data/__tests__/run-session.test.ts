@@ -1,6 +1,8 @@
 import * as Location from 'expo-location';
+import * as Speech from 'expo-speech';
 
 import { applySamples, pauseRun, startRun } from '../../domain/run-tracker';
+import { DEFAULT_VOICE_PREFERENCES } from '../../domain/run-voice';
 import {
   RUN_TASK,
   discardRunSession,
@@ -11,6 +13,9 @@ import {
   runRepository,
   startRunSession,
 } from '../run-session';
+import { voicePreferences } from '../run-voice';
+
+jest.mock('expo-speech');
 
 // O mock do expo-task-manager (jest.setup.ts) executa a tarefa definida no import de run-session.
 const { __runTask: runTask } = jest.requireMock<{ __runTask: (name: string, body: unknown) => Promise<void> }>(
@@ -46,6 +51,7 @@ const serviceStarted = () => Location.hasStartedLocationUpdatesAsync(RUN_TASK);
 
 beforeEach(async () => {
   await discardRunSession();
+  voicePreferences.update(DEFAULT_VOICE_PREFERENCES);
   jest.clearAllMocks();
 });
 
@@ -122,6 +128,35 @@ describe('tarefa de localização', () => {
     await runTask(RUN_TASK, { data: { locations: [fix(0, 0), fix(30, 10)] }, error: { code: 1, message: 'x' } });
     await runTask(RUN_TASK, { data: undefined, error: null });
     expect(runRepository.get()).toEqual(startRun(T0, 1000));
+  });
+});
+
+describe('aviso falado na tarefa de localização', () => {
+  const speak = jest.mocked(Speech.speak);
+
+  it('fala quando as amostras fecham um quilômetro, e só nesse lote', async () => {
+    await startRunSession(1000, () => T0);
+    await runTask(RUN_TASK, { data: { locations: [fix(0, 0), fix(600, 180)] }, error: null });
+    expect(speak).not.toHaveBeenCalled();
+
+    await runTask(RUN_TASK, { data: { locations: [fix(1200, 360)] }, error: null });
+    expect(runRepository.get()?.splits).toHaveLength(1);
+    expect(speak).toHaveBeenCalledTimes(1);
+    expect(speak).toHaveBeenCalledWith(
+      'Quilômetro 1. Parcial: 5 minutos. Pace médio: 5 minutos por quilômetro.',
+      { language: 'pt-BR' },
+    );
+
+    await runTask(RUN_TASK, { data: { locations: [fix(1500, 450)] }, error: null });
+    expect(speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('não fala com a voz desligada', async () => {
+    voicePreferences.update({ enabled: false });
+    await startRunSession(1000, () => T0);
+    await runTask(RUN_TASK, { data: { locations: [fix(0, 0), fix(1200, 360)] }, error: null });
+    expect(runRepository.get()?.splits).toHaveLength(1);
+    expect(speak).not.toHaveBeenCalled();
   });
 });
 

@@ -19,6 +19,7 @@ const ICONS = {
   palette: { ios: 'paintpalette.fill', android: 'palette' },
   info: { ios: 'info.circle', android: 'info' },
   route: { ios: 'point.topleft.down.to.point.bottomright.curvepath', android: 'route' },
+  voice: { ios: 'speaker.wave.2.fill', android: 'record_voice_over' },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;
