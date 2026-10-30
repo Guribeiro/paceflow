@@ -330,6 +330,76 @@ describe('WorkoutLogScreen: trajeto salvo', () => {
     expect(screen.getByRole('button', { name: 'Ver trajeto' })).toBeOnTheScreen();
   });
 
+  it('mostra e esconde Ver trajeto quando só o trajeto muda, com a lista de treinos igual', async () => {
+    const workout = addWorkout();
+    await render(<WorkoutLogScreen />);
+    expect(screen.queryByRole('button', { name: 'Ver trajeto' })).not.toBeOnTheScreen();
+
+    await act(async () => routeRepository.set(workout.id, route));
+    expect(screen.getByRole('button', { name: 'Ver trajeto' })).toBeOnTheScreen();
+
+    await act(async () => routeRepository.remove(workout.id));
+    expect(screen.queryByRole('button', { name: 'Ver trajeto' })).not.toBeOnTheScreen();
+  });
+
+  it('mostra Ver trajeto quando o trajeto chega por importação', async () => {
+    const workout = addWorkout();
+    await render(<WorkoutLogScreen />);
+
+    await act(async () => {
+      routeRepository.importRoutes({ [workout.id]: route });
+    });
+    expect(screen.getByRole('button', { name: 'Ver trajeto' })).toBeOnTheScreen();
+  });
+
+  it('apagar o trajeto com o desenho aberto tira o desenho sem quebrar a tela', async () => {
+    const workout = addWorkout();
+    routeRepository.set(workout.id, route);
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+    await user.press(screen.getByRole('button', { name: 'Ver trajeto' }));
+    expect(routeImage()).toBeOnTheScreen();
+
+    await act(async () => routeRepository.remove(workout.id));
+    expect(routeImage()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ocultar trajeto' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Editar treino' })).toBeOnTheScreen();
+  });
+
+  it('redesenha o trajeto aberto quando ele é trocado', async () => {
+    const workout = addWorkout();
+    routeRepository.set(workout.id, route);
+    const user = userEvent.setup();
+    await render(<WorkoutLogScreen />);
+    await user.press(screen.getByRole('button', { name: 'Ver trajeto' }));
+    const pathCount = () => routeImage()!.queryAll((node) => node.type === 'RNSVGPath').length;
+    expect(pathCount()).toBe(1);
+
+    // Trajeto com uma pausa no meio: dois trechos, dois traços.
+    const paused: [number, number][][] = [
+      [
+        [-23.55, -46.63],
+        [-23.551, -46.631],
+      ],
+      [
+        [-23.552, -46.632],
+        [-23.553, -46.633],
+      ],
+    ];
+    await act(async () => routeRepository.set(workout.id, paused));
+    expect(pathCount()).toBe(2);
+  });
+
+  it('não lê o trajeto quando ele chega com o desenho fechado', async () => {
+    const workout = addWorkout();
+    await render(<WorkoutLogScreen />);
+    const get = jest.spyOn(routeRepository, 'get');
+
+    await act(async () => routeRepository.set(workout.id, route));
+    expect(screen.getByRole('button', { name: 'Ver trajeto' })).toBeOnTheScreen();
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it('excluir o treino apaga o trajeto dele', async () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);

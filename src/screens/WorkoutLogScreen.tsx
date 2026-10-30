@@ -21,6 +21,7 @@ import { summarizeWeek } from '../domain/workout-summary';
 import { type Shoe, isActiveShoe } from '../domain/shoe';
 import { shoeMileage, shoeStatus } from '../domain/shoe-mileage';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
+import { useHasRoute, useRoute } from '../hooks/useRoute';
 import { useShoes } from '../hooks/useShoes';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
@@ -114,12 +115,13 @@ function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: D
 
 /** Lido só quando o "Ver trajeto" abre; um trajeto corrompido não desenha nada. */
 function SavedRoute({ workoutId }: { workoutId: string }) {
-  const route = routeRepository.get(workoutId);
+  const route = useRoute(workoutId);
   return route ? <RouteMap route={route} /> : null;
 }
 
 function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
   const [editing, setEditing] = useState(false);
+  const hasRoute = useHasRoute(workout.id);
 
   return (
     <Card gap={2}>
@@ -133,7 +135,7 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
               <SplitList splits={workout.splits} unit={splitUnit(workout.splitMeters)} />
             </Disclosure>
           ) : null}
-          {routeRepository.has(workout.id) ? (
+          {hasRoute ? (
             <Disclosure showLabel="Ver trajeto" hideLabel="Ocultar trajeto">
               <SavedRoute workoutId={workout.id} />
             </Disclosure>
