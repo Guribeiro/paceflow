@@ -31,6 +31,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RUN_TASK, async
     longitude: l.coords.longitude,
     accuracy: l.coords.accuracy ?? null,
     timestamp: l.timestamp,
+    speed: l.coords.speed ?? null,
   }));
   const next = applySamples(state, samples);
   runRepository.set(next);

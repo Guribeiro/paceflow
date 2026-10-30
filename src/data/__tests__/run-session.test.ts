@@ -36,7 +36,12 @@ const permission = (granted: boolean, canAskAgain: boolean): Location.LocationPe
 });
 
 /** LocationObject a `meters` ao norte, `seconds` depois de T0. */
-const fix = (meters: number, seconds: number, accuracy: number | null = 5): Location.LocationObject => ({
+const fix = (
+  meters: number,
+  seconds: number,
+  accuracy: number | null = 5,
+  speed: number | null = null,
+): Location.LocationObject => ({
   coords: {
     latitude: -23.5 + meters * METER,
     longitude: -46.6,
@@ -44,7 +49,7 @@ const fix = (meters: number, seconds: number, accuracy: number | null = 5): Loca
     accuracy,
     altitudeAccuracy: null,
     heading: null,
-    speed: null,
+    speed,
   },
   timestamp: T0 + seconds * 1000,
 });
@@ -234,6 +239,17 @@ describe('pausa automática na tarefa de localização', () => {
     await deliver([fix(620, 46), ...still(120, 47, 60)]);
     expect(runRepository.get()?.autoPaused).toBe(true);
     expect(speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('repassa a velocidade do GPS: parado pela velocidade e retomando sem sair do lugar', async () => {
+    await startRunSession(1000, true, () => T0);
+    await deliver(Array.from({ length: 31 }, (_, i) => fix(i * 4, i, 5, 4)));
+    await deliver(Array.from({ length: 10 }, (_, i) => fix(120, 31 + i, 5, 0.1)));
+    expect(runRepository.get()).toMatchObject({ autoPaused: true, movingMs: 38_000 });
+
+    await deliver([fix(120, 41, 5, 1.2), fix(120, 42, 5, 1.2)]);
+    expect(runRepository.get()).toMatchObject({ autoPaused: false, resumedAt: T0 + 42_000 });
+    expect(speak).toHaveBeenLastCalledWith('Retomando.', { language: 'pt-BR' });
   });
 
   it('pausa calada com a voz desligada', async () => {

@@ -10,6 +10,12 @@ export interface RunSample {
   accuracy: number | null;
   /** ms desde a época (Location.timestamp). */
   timestamp: number;
+  /**
+   * Velocidade medida pelo GPS (m/s, por Doppler); null/ausente quando o
+   * aparelho não informa. Andando, a posição é suavizada e quase não sai do
+   * lugar, mas a velocidade não: é ela que decide parado ou em movimento.
+   */
+  speed?: number | null;
 }
 
 export type RunStatus = 'running' | 'paused' | 'finished';
@@ -59,10 +65,16 @@ export const MIN_STEP_METERS = 3;
 export const PACE_WINDOW_MS = 30_000;
 /** Sem sair do raio de parada por mais que isso, a pausa automática congela o tempo (esses segundos contam). */
 export const AUTO_PAUSE_MS = 8_000;
-/** Raio de parada: maior que a tremida do GPS parado; correndo, sai dele em ~3 s. */
+/** Parado, o GPS mede 0,1–0,3 m/s; andando, 0,7 ou mais. */
+export const MOVING_SPEED_MPS = 0.5;
+/** Sem velocidade do GPS: raio de parada, maior que a tremida do GPS parado. */
 export const STILL_RADIUS_METERS = 6;
-/** Distância do ponto onde parou para a pausa automática terminar (em duas amostras seguidas, contra saltos do GPS). */
+/** Sem velocidade do GPS: distância do ponto onde parou para a pausa automática terminar. */
 export const RESUME_METERS = 10;
+
+/** Velocidade do GPS utilizável (o Android manda negativa ou ausente quando não sabe). */
+const gpsSpeed = (sample: RunSample): number | null =>
+  typeof sample.speed === 'number' && Number.isFinite(sample.speed) && sample.speed >= 0 ? sample.speed : null;
 
 const EARTH_RADIUS_METERS = 6_371_000;
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -144,8 +156,10 @@ export function applySamples(state: RunState, samples: readonly RunSample[]): Ru
     if (sample.accuracy !== null && sample.accuracy > MAX_ACCURACY_METERS) continue;
 
     if (next.autoPaused) {
-      const away = haversineMeters(next.lastPoint!, sample) >= RESUME_METERS;
-      // Uma amostra longe sozinha pode ser salto do GPS: espera a seguinte confirmar.
+      const speed = gpsSpeed(sample);
+      const away =
+        speed !== null ? speed >= MOVING_SPEED_MPS : haversineMeters(next.lastPoint!, sample) >= RESUME_METERS;
+      // Uma amostra em movimento sozinha pode ser erro do GPS: espera a seguinte confirmar.
       if (!away || !next.resumePending) {
         if (next.resumePending !== away) next = { ...next, resumePending: away };
         continue;
@@ -182,22 +196,29 @@ export function applySamples(state: RunState, samples: readonly RunSample[]): Ru
     const accepted = step >= MIN_STEP_METERS && dt > 0 && step / (dt / 1000) <= MAX_SPEED_MPS;
 
     const { anchor } = next;
-    if (anchor === null || haversineMeters(anchor, sample) >= STILL_RADIUS_METERS) {
+    const speed = gpsSpeed(sample);
+    const moving =
+      speed !== null
+        ? speed >= MOVING_SPEED_MPS
+        : anchor === null || haversineMeters(anchor, sample) >= STILL_RADIUS_METERS;
+    if (moving) {
       // A distância do novo centro já inclui o passo desta amostra: a pausa nunca tira chão corrido antes dele.
       const distanceMeters = next.distanceMeters + (accepted ? step : 0);
       next = { ...next, lastMoveAt: sample.timestamp, anchor: { latitude: sample.latitude, longitude: sample.longitude, distanceMeters } };
     } else {
       const pauseAt = stoppedAt(next, sample.timestamp);
       if (pauseAt !== null) {
-        // Parado: o tempo congela no instante da pausa e a tremida somada dentro do
-        // raio sai da distância (se nenhuma parcial fechou nesse meio-tempo).
-        const closedSince = next.splits.length > Math.floor(anchor.distanceMeters / next.splitMeters);
+        // Parado: o tempo congela no instante da pausa e a tremida somada desde a
+        // última amostra em movimento sai da distância (se nenhuma parcial fechou nesse meio-tempo).
+        // Sem centro (estado antigo), não há o que devolver.
+        const restore = anchor?.distanceMeters ?? next.distanceMeters;
+        const closedSince = next.splits.length > Math.floor(restore / next.splitMeters);
         next = {
           ...next,
           autoPaused: true,
           movingMs: next.movingMs + (pauseAt - resumedAt),
           resumedAt: null,
-          distanceMeters: closedSince ? next.distanceMeters : anchor.distanceMeters,
+          distanceMeters: closedSince ? next.distanceMeters : restore,
         };
         continue;
       }

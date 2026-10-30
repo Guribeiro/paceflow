@@ -6,6 +6,7 @@ import {
   finishRun,
   haversineMeters,
   isAutoPaused,
+  MOVING_SPEED_MPS,
   parseRunState,
   pauseRun,
   resumeRun,
@@ -611,5 +612,154 @@ describe('parseRunState (pausa automática)', () => {
     ['pausa automática numa corrida finalizada', { ...paused, status: 'finished' }],
   ])('rejeita %s', (_name, value) => {
     expect(parseRunState(value)).toBeNull();
+  });
+});
+
+describe('pausa automática pela velocidade do GPS', () => {
+  /** Amostra com a velocidade Doppler do GPS. */
+  const at = (meters: number, seconds: number, speed: number | null | undefined, accuracy = 5): RunSample => ({
+    ...north(meters, seconds, accuracy),
+    speed,
+  });
+  /** `count` amostras, uma por segundo a partir de `fromS`, andando `step` m por amostra com a velocidade dada. */
+  const walk = (
+    fromS: number,
+    count: number,
+    startMeters: number,
+    step: number,
+    speed: (i: number) => number | null | undefined,
+  ) =>
+    Array.from({ length: count }, (_, i) => at(startMeters + i * step, fromS + i, speed(i)));
+  /** Correndo a 4 m/s (velocidade 4) de 0 a 30 s: 120 m. */
+  const ran = () => applySamples(startRun(T0, 1000, true), walk(0, 31, 0, 4, () => 4));
+  /** Parado nos 120 m com velocidade 0,1–0,3 de 31 a 60 s. */
+  const stillSpeeds = [0.1, 0.2, 0.3];
+  const paused = () => applySamples(ran(), walk(31, 30, 120, 0, (i) => stillSpeeds[i % 3]));
+
+  it('andando devagar com a posição quase parada (velocidade 1,0), não pausa', () => {
+    // 0,5 m por amostra: pela regra do raio (6 m em 8 s), pausaria.
+    const state = applySamples(startRun(T0, 1000, true), walk(0, 61, 0, 0.5, () => 1));
+    expect(state.autoPaused).toBe(false);
+    expect(isAutoPaused(state, T0 + 60_000)).toBe(false);
+    expect(elapsedMs(state, T0 + 60_000)).toBe(60_000);
+  });
+
+  it('parado com velocidade 0,1–0,3, pausa 8 s depois da última amostra em movimento', () => {
+    expect(applySamples(ran(), walk(31, 8, 120, 0, (i) => stillSpeeds[i % 3])).autoPaused).toBe(false);
+    expect(paused()).toMatchObject({ autoPaused: true, movingMs: 38_000, resumedAt: null });
+  });
+
+  it('parado com a posição pulando 7 m, mas velocidade baixa, pausa mesmo assim', () => {
+    const state = applySamples(ran(), walk(31, 9, 120, 0, () => 0.2).map((s, i) => (i % 2 ? s : at(127, 31 + i, 0.2))));
+    expect(state).toMatchObject({ autoPaused: true, movingMs: 38_000 });
+  });
+
+  it('retoma com duas amostras seguidas acima de 0,5 m/s, mesmo sem sair do lugar', () => {
+    const pending = applySamples(paused(), [at(120, 61, 0.8)]);
+    expect(pending).toMatchObject({ autoPaused: true, resumePending: true });
+    const resumed = applySamples(pending, [at(120.5, 62, 0.8)]);
+    expect(resumed).toMatchObject({ autoPaused: false, resumePending: false, resumedAt: T0 + 62_000, movingMs: 38_000 });
+  });
+
+  it('uma amostra rápida isolada não retoma', () => {
+    const state = applySamples(paused(), [at(120, 61, 3), ...walk(62, 20, 120, 0, () => 0.1)]);
+    expect(state).toMatchObject({ autoPaused: true, resumePending: false, movingMs: 38_000 });
+  });
+
+  describe('limite de 0,5 m/s', () => {
+    it('é exatamente o valor da constante', () => {
+      expect(MOVING_SPEED_MPS).toBe(0.5);
+    });
+
+    it('0,5 conta como movimento e 0,49 não', () => {
+      const start = startRun(T0, 1000, true);
+      expect(applySamples(start, [at(0, 0, 1), at(0, 9, 0.5)])).toMatchObject({ autoPaused: false, lastMoveAt: T0 + 9000 });
+      expect(applySamples(start, [at(0, 0, 1), at(0, 9, 0.49)])).toMatchObject({ autoPaused: true, movingMs: 8000 });
+    });
+
+    it('retoma com duas amostras a 0,5, não com duas a 0,49', () => {
+      expect(applySamples(paused(), [at(120, 61, 0.5), at(120, 62, 0.5)]).autoPaused).toBe(false);
+      expect(applySamples(paused(), [at(120, 61, 0.49), at(120, 62, 0.49)])).toMatchObject({
+        autoPaused: true,
+        resumePending: false,
+      });
+    });
+  });
+
+  describe('sem velocidade utilizável, vale o raio', () => {
+    it.each([
+      ['negativa', -1],
+      ['NaN', Number.NaN],
+      ['infinita', Number.POSITIVE_INFINITY],
+      ['null', null],
+      ['ausente', undefined],
+    ])('velocidade %s: correndo a 4 m/s não pausa', (_name, speed) => {
+      const state = applySamples(startRun(T0, 1000, true), walk(0, 61, 0, 4, () => speed));
+      expect(state.autoPaused).toBe(false);
+      expect(elapsedMs(state, T0 + 60_000)).toBe(60_000);
+    });
+
+    it.each([
+      ['negativa', -1],
+      ['NaN', Number.NaN],
+      ['infinita', Number.POSITIVE_INFINITY],
+      ['null', null],
+    ])('velocidade %s: parado pausa e só retoma a 10 m de onde parou', (_name, speed) => {
+      const stopped = applySamples(startRun(T0, 1000, true), walk(0, 10, 0, 0, () => speed));
+      expect(stopped).toMatchObject({ autoPaused: true, movingMs: 8000 });
+      expect(applySamples(stopped, [at(2, 10, speed), at(2, 11, speed)]).autoPaused).toBe(true);
+      expect(applySamples(stopped, [at(11, 10, speed), at(13, 11, speed)])).toMatchObject({
+        autoPaused: false,
+        resumedAt: T0 + 11_000,
+      });
+    });
+  });
+
+  describe('amostras mistas (com e sem velocidade)', () => {
+    it('cada amostra usa a sua regra para contar movimento', () => {
+      const state = applySamples(ran(), [
+        ...walk(31, 6, 120, 0, () => 0.1), // 31–36 s: parado pela velocidade
+        at(128, 37, null), // sem velocidade, 8 m do centro: movimento pelo raio
+        ...walk(38, 9, 128, 0, () => 0.1), // 38–46 s: parado
+      ]);
+      expect(state).toMatchObject({ autoPaused: true, movingMs: 45_000 });
+    });
+
+    it('a confirmação da retomada mistura as duas regras', () => {
+      // Rápida (pede confirmação) e depois sem velocidade a 2 m: perto, zera.
+      let state = applySamples(paused(), [at(120, 61, 0.8), at(122, 62, null)]);
+      expect(state).toMatchObject({ autoPaused: true, resumePending: false });
+      // Sem velocidade a 11 m (pede) e depois rápida no mesmo lugar: retoma.
+      state = applySamples(state, [at(131, 63, null), at(131, 64, 0.8)]);
+      expect(state).toMatchObject({ autoPaused: false, resumedAt: T0 + 64_000 });
+    });
+  });
+
+  it('corrida antiga sem centro do raio pausa sem mexer na distância', () => {
+    const { anchor: _a, ...old } = ran();
+    const restored = parseRunState(JSON.parse(JSON.stringify(old)))!;
+    expect(restored.anchor).toBeNull();
+    const state = applySamples(restored, walk(31, 9, 120, 0, () => 0.1));
+    expect(state).toMatchObject({ autoPaused: true, movingMs: 38_000 });
+    expect(state.distanceMeters).toBe(restored.distanceMeters);
+  });
+
+  it('regressão da rua: andar com a posição suavizada, parar e voltar devagar retoma', () => {
+    // Padrão do teste real no Android: andando a ~1,5 m/s, a posição suavizada avança só ~1 m/s;
+    // parado, velocidade 0,1–0,2 e a posição treme poucos decímetros; voltando a ~0,8 m/s, a
+    // posição quase não sai do lugar (0,3 m/s).
+    const samples = [
+      ...walk(0, 41, 0, 1, (i) => 1.4 + (i % 3) * 0.1), // 0–40 s
+      ...Array.from({ length: 20 }, (_, i) => at(40 + (i % 2) * 0.3, 41 + i, 0.1 + (i % 2) * 0.1)), // 41–60 s
+      ...walk(61, 30, 40.5, 0.3, (i) => 0.75 + (i % 2) * 0.1), // 61–90 s
+    ];
+    const state = applySamples(startRun(T0, 1000, true), samples);
+    expect(state).toMatchObject({ autoPaused: false, resumedAt: T0 + 62_000 });
+    expect(isAutoPaused(state, T0 + 90_000)).toBe(false);
+    expect(elapsedMs(state, T0 + 90_000)).toBe(48_000 + 28_000);
+
+    // Pela regra antiga (só o raio), a mesma sequência ficaria presa em pausa.
+    const withoutSpeed = applySamples(startRun(T0, 1000, true), samples.map((s) => ({ ...s, speed: null })));
+    expect(withoutSpeed.autoPaused).toBe(true);
   });
 });
