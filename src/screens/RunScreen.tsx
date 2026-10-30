@@ -253,8 +253,9 @@ export function RunScreen() {
                   <Icon name="run" color={ON_BRAND} size={56} />
                   <Text className="text-2xl font-extrabold text-white">Pronto para correr?</Text>
                   <Text className="text-base text-white">
-                    Grava tempo, distância e parciais pelo GPS, com a tela apagada. A rota não é guardada. Comece ao ar
-                    livre, com o céu aberto.
+                    Grava tempo, distância e parciais pelo GPS, com a tela apagada.{' '}
+                    {keepRoute ? 'O trajeto fica só neste aparelho.' : 'O trajeto não é guardado.'} Comece ao ar livre,
+                    com o céu aberto.
                   </Text>
                 </Card>
               )}
