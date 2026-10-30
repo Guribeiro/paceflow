@@ -5,7 +5,6 @@ import { type DistanceUnit, KM_PER_MILE, formatDuration, spokenDuration } from '
 import { type PersonalRecord, personalRecords } from '../domain/personal-records';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from './ui/Card';
-import { SectionHeader } from './ui/SectionHeader';
 import { display } from './ui/typography';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -36,10 +35,9 @@ export function PersonalRecordsCard({ unit }: { unit: DistanceUnit }) {
   const perUnit = (secondsPerKm: number) => (unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
 
   return (
-    <Card>
-      <SectionHeader>Recordes</SectionHeader>
+    <Card title="Recordes" icon="trophy">
       {records.length === 0 ? (
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+        <Text className="text-base text-muted dark:text-muted-dark">
           Registre um treino de 5 km, 10 km, meia ou maratona para começar seus recordes.
         </Text>
       ) : (
@@ -53,8 +51,8 @@ export function PersonalRecordsCard({ unit }: { unit: DistanceUnit }) {
               accessibilityLabel={`${r.label}: ${spokenDuration(r.seconds)}, pace ${pace} por ${unit === 'km' ? 'quilômetro' : 'milha'}, em ${date}`}
               className="flex-row flex-wrap items-baseline justify-between gap-x-4"
             >
-              <Text className="text-lg font-bold text-black dark:text-white">{r.label}</Text>
-              <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
+              <Text className="text-lg font-bold text-ink dark:text-ink-dark">{r.label}</Text>
+              <Text className="text-lg font-semibold text-ink dark:text-ink-dark" style={display}>
                 {formatDuration(r.seconds)} · {pace}/{unit} · {date}
               </Text>
             </View>

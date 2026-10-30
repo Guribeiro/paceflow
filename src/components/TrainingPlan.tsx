@@ -8,7 +8,6 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { ProgressBar } from './ui/ProgressBar';
-import { SectionHeader } from './ui/SectionHeader';
 import { display, tabular } from './ui/typography';
 
 const UPCOMING = 4;
@@ -37,8 +36,8 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
   const done = `${formatDistance(progress.doneMeters, unit)} de ${formatDistance(week.targetMeters, unit)} ${unit}`;
 
   return (
-    <Card variant="inverted">
-      <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">
+    <Card variant="hero">
+      <Text className="text-base font-semibold text-white">
         Esta semana · {PHASE_LABEL[week.phase]}
         {week.isCutback ? ' (alívio)' : ''}
       </Text>
@@ -49,7 +48,7 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
         accessibilityValue={{ min: 0, max: 100, now: Math.round(ratio * 100) }}
         className="gap-2"
       >
-        <Text className="text-2xl font-bold text-white dark:text-black" style={display}>
+        <Text className="text-2xl font-bold text-white" style={display}>
           {done}
         </Text>
         <ProgressBar ratio={ratio} inverted />
@@ -64,18 +63,18 @@ function CurrentWeek({ week, unit }: { week: TrainingPlanWeek; unit: DistanceUni
             accessibilityLabel={`${session.title}${isDone ? ', feito' : ''}: ${session.detail}${pace ? `, pace ${pace}` : ''}`}
             className="gap-0.5"
           >
-            <Text className="text-lg font-bold text-white dark:text-black">
+            <Text className="text-lg font-bold text-white">
               {isDone ? '✓ ' : ''}
               {session.title}
             </Text>
-            <Text className="text-base text-neutral-200 dark:text-neutral-800" style={tabular}>
+            <Text className="text-base text-white" style={tabular}>
               {session.detail}
               {pace ? ` · ${pace}` : ''}
             </Text>
           </View>
         );
       })}
-      <Text className="text-sm text-neutral-300 dark:text-neutral-700">Nos outros dias, corridas leves ou descanso.</Text>
+      <Text className="text-sm text-white">Nos outros dias, corridas leves ou descanso.</Text>
     </Card>
   );
 }
@@ -92,10 +91,9 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
   const visible = showAll ? next : next.slice(0, UPCOMING);
 
   return (
-    <View className="gap-3">
-      <SectionHeader>Plano até a prova</SectionHeader>
+    <Card gap={3} title="Plano até a prova" icon="calendar">
       {plan.shortNotice ? (
-        <Text className="text-base font-semibold text-black dark:text-white">
+        <Text className="text-base font-semibold text-ink dark:text-ink-dark">
           Pouco tempo até a prova: o foco agora é chegar descansado.
         </Text>
       ) : null}
@@ -103,7 +101,7 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
       <CurrentWeek week={current} unit={unit} />
 
       {next.length > 0 ? (
-        <View className="rounded-xl border-2 border-black dark:border-white">
+        <View className="rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
           {visible.map((week, i) => (
             <View
               key={week.weekStart}
@@ -112,13 +110,13 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
                 week.isRaceWeek ? ', com a prova' : `, longão de ${formatDistance(week.longRunMeters, unit)} ${unit}`
               }`}
               className={`flex-row flex-wrap items-center justify-between gap-x-4 px-4 py-2 ${
-                i > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
+                i > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''
               }`}
             >
-              <Text className="text-base text-black dark:text-white">
+              <Text className="text-base text-ink dark:text-ink-dark">
                 {weekLabel(week.weekStart)} · {PHASE_LABEL[week.phase]}
               </Text>
-              <Text className="text-base font-semibold text-black dark:text-white" style={display}>
+              <Text className="text-base font-semibold text-ink dark:text-ink-dark" style={display}>
                 {formatDistance(week.targetMeters, unit)} {unit}
                 {week.isRaceWeek ? ' · prova' : ` · longão ${formatDistance(week.longRunMeters, unit)}`}
               </Text>
@@ -136,9 +134,9 @@ export function TrainingPlan({ unit }: { unit: DistanceUnit }) {
         />
       ) : null}
 
-      <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+      <Text className="text-sm text-muted dark:text-muted-dark">
         Plano genérico de referência. Ajuste ao seu corpo; procure um profissional se sentir dor.
       </Text>
-    </View>
+    </Card>
   );
 }

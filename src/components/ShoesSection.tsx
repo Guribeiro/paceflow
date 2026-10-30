@@ -13,7 +13,6 @@ import { ButtonRow } from './ui/ButtonRow';
 import { Card } from './ui/Card';
 import { confirmDestructive } from './ui/confirm';
 import { ProgressBar } from './ui/ProgressBar';
-import { SectionHeader } from './ui/SectionHeader';
 
 const STATUS_LABEL: Record<ShoeStatus, string> = {
   ok: '',
@@ -37,7 +36,7 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
   const summary = `${formatDistance(meters, unit)} de ${formatDistance(shoe.limitMeters, unit)} ${unit}`;
 
   return (
-    <Card gap={2} compact>
+    <Card variant="outline" gap={2} compact>
       <View
         accessible
         accessibilityRole="progressbar"
@@ -46,20 +45,20 @@ function ShoeRow({ shoe, meters, unit }: { shoe: Shoe; meters: number; unit: Dis
         className="gap-1"
       >
         <View className="flex-row flex-wrap items-center justify-between gap-x-3">
-          <Text className="text-lg font-bold text-black dark:text-white">
+          <Text className="text-lg font-bold text-ink dark:text-ink-dark">
             {shoe.name}
             {retired ? ' (aposentado)' : ''}
           </Text>
           {STATUS_LABEL[status] && !retired ? (
             <Text
-              className={`text-base font-bold ${status === 'replace' ? 'text-red-700 dark:text-red-400' : 'text-black dark:text-white'}`}
+              className={`text-base font-bold ${status === 'replace' ? 'text-red-700 dark:text-red-400' : 'text-ink dark:text-ink-dark'}`}
             >
               {STATUS_LABEL[status]}
             </Text>
           ) : null}
         </View>
         <ProgressBar ratio={ratio} />
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">{summary}</Text>
+        <Text className="text-base text-muted dark:text-muted-dark">{summary}</Text>
       </View>
       <View className="flex-row flex-wrap justify-end gap-6">
         <Button
@@ -94,7 +93,7 @@ function AddShoeForm({ unit, onDone }: { unit: DistanceUnit; onDone: () => void 
   }
 
   return (
-    <Card compact>
+    <Card variant="outline" compact>
       <Field
         label="Nome do tênis"
         variant="text"
@@ -139,10 +138,9 @@ export function ShoesSection({ unit }: { unit: DistanceUnit }) {
   const ordered = [...shoes].sort((a, b) => Number(a.retiredAt !== null) - Number(b.retiredAt !== null));
 
   return (
-    <View className="gap-2">
-      <SectionHeader>Tênis</SectionHeader>
+    <Card gap={2} title="Tênis" icon="shoe">
       {shoes.length === 0 && !adding ? (
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+        <Text className="text-base text-muted dark:text-muted-dark">
           Cadastre seus tênis para acompanhar quantos km cada par já rodou.
         </Text>
       ) : null}
@@ -154,6 +152,6 @@ export function ShoesSection({ unit }: { unit: DistanceUnit }) {
       ) : (
         <Button label="Adicionar tênis" variant="link" onPress={() => setAdding(true)} />
       )}
-    </View>
+    </Card>
   );
 }

@@ -27,7 +27,6 @@ import { Field } from './Field';
 import { RPE_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { SectionHeader } from './ui/SectionHeader';
 import { display, tabular } from './ui/typography';
 
 const REP_OPTIONS = [...TRACK_DISTANCES.map((d) => ({ value: String(d), label: `${d} m` })), { value: 'other', label: 'Outra' }];
@@ -48,8 +47,7 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
     : '3:50';
 
   return (
-    <View className="gap-3">
-      <SectionHeader>Tempo por tiro</SectionHeader>
+    <Card gap={3} title="Tempo por tiro" icon="timer">
       <Field
         label={`Pace-alvo (min/${unit})`}
         value={targetText}
@@ -60,12 +58,12 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
         fill={false}
       />
       {!targetText && suggestedSecondsPerKm ? (
-        <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+        <Text className="text-sm text-muted dark:text-muted-dark">
           Usando o pace de intervalado sugerido pelo seu esforço no modo Ritmo.
         </Text>
       ) : null}
       {secondsPerKm ? (
-        <View className="flex-row flex-wrap rounded-xl border-2 border-black dark:border-white">
+        <View className="flex-row flex-wrap rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
           {splitTimes(secondsPerKm).map(({ distanceMeters, seconds }) => (
             <View
               key={distanceMeters}
@@ -73,19 +71,19 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
               accessibilityLabel={`${distanceMeters} metros: ${spokenDuration(seconds)}`}
               className="min-w-20 flex-1 items-center gap-1 p-3"
             >
-              <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{distanceMeters} m</Text>
-              <Text className="text-2xl font-bold text-black dark:text-white" style={display}>
+              <Text className="text-sm font-semibold text-muted dark:text-muted-dark">{distanceMeters} m</Text>
+              <Text className="text-2xl font-bold text-ink dark:text-ink-dark" style={display}>
                 {formatDuration(seconds)}
               </Text>
             </View>
           ))}
         </View>
       ) : (
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+        <Text className="text-base text-muted dark:text-muted-dark">
           Informe um pace-alvo, ou calcule um esforço no modo Ritmo para usar o pace de intervalado.
         </Text>
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -142,8 +140,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
   }
 
   return (
-    <Card gap={4}>
-      <SectionHeader>Registrar série</SectionHeader>
+    <Card gap={4} title="Registrar série" icon="bolt">
 
       <ChoiceChips
         label="Distância de cada tiro"
@@ -182,7 +179,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
       {lapError ? <Text className="-mt-2 text-base font-semibold text-red-700 dark:text-red-400">{lapError}</Text> : null}
 
       {laps.length > 0 ? (
-        <View className="rounded-xl border-2 border-black dark:border-white">
+        <View className="rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
           {laps.map((seconds, index) => {
             // Melhor e pior marcados por texto, não só por estilo.
             const mark =
@@ -197,10 +194,10 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
               <View
                 key={index}
                 className={`flex-row items-center justify-between px-4 py-1 ${
-                  index > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
+                  index > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''
                 }`}
               >
-                <Text className="text-lg text-black dark:text-white" style={tabular}>
+                <Text className="text-lg text-ink dark:text-ink-dark" style={tabular}>
                   {index + 1}. <Text className="font-bold">{formatDuration(seconds)}</Text>
                   {mark}
                 </Text>
@@ -218,10 +215,10 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
 
       {stats && repMeters ? (
         <View accessible accessibilityLiveRegion="polite" className="gap-1">
-          <Text className="text-lg font-bold text-black dark:text-white" style={display}>
+          <Text className="text-lg font-bold text-ink dark:text-ink-dark" style={display}>
             Média {formatDuration(stats.average)} · melhor {formatDuration(stats.best)} · pior {formatDuration(stats.worst)}
           </Text>
-          <Text className="text-base text-neutral-700 dark:text-neutral-300" style={tabular}>
+          <Text className="text-base text-muted dark:text-muted-dark" style={tabular}>
             {autoNote}
           </Text>
         </View>
@@ -254,7 +251,7 @@ function SeriesLogger({ unit }: { unit: DistanceUnit }) {
         <Text
           accessibilityLiveRegion="polite"
           accessibilityLabel={status === 'saved' ? 'Série salva no diário' : undefined}
-          className={`text-base font-semibold ${status === 'saved' ? 'text-black dark:text-white' : 'text-red-700 dark:text-red-400'}`}
+          className={`text-base font-semibold ${status === 'saved' ? 'text-ink dark:text-ink-dark' : 'text-red-700 dark:text-red-400'}`}
         >
           {status === 'saved' ? '✓ Série salva no diário' : 'Não foi possível salvar a série.'}
         </Text>

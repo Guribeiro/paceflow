@@ -14,7 +14,7 @@ interface Props {
 
 export function UnitToggle({ value, onChange }: Props) {
   return (
-    <View className="flex-row rounded-xl border-2 border-black dark:border-white" accessibilityRole="radiogroup">
+    <View className="flex-row rounded-full bg-surface-2 p-1 dark:bg-surface-2-dark" accessibilityRole="radiogroup">
       {OPTIONS.map((option) => {
         const selected = option.value === value;
         return (
@@ -24,13 +24,13 @@ export function UnitToggle({ value, onChange }: Props) {
             accessibilityRole="radio"
             accessibilityState={{ checked: selected }}
             accessibilityLabel={option.spoken}
-            className={`min-h-12 min-w-16 items-center justify-center px-4 active:opacity-70 ${
-              selected ? 'bg-black dark:bg-white' : ''
+            className={`min-h-12 min-w-16 items-center justify-center rounded-full px-4 active:opacity-70 ${
+              selected ? 'bg-brand dark:bg-brand-dark' : ''
             }`}
           >
             <Text
               className={`text-lg font-bold ${
-                selected ? 'text-white dark:text-black' : 'text-black dark:text-white'
+                selected ? 'text-white' : 'text-ink dark:text-ink-dark'
               }`}
             >
               {option.label}

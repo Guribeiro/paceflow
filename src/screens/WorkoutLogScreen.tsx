@@ -24,6 +24,8 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { confirmDestructive } from '../components/ui/confirm';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { display } from '../components/ui/typography';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -41,6 +43,15 @@ function confirmRemove(workout: Workout, unit: DistanceUnit) {
     confirmLabel: 'Excluir',
     onConfirm: () => workoutRepository.remove(workout.id),
   });
+}
+
+/** Selo em pílula (terreno, esforço). */
+function Badge({ children }: { children: string }) {
+  return (
+    <Text className="overflow-hidden rounded-full bg-brand-soft px-3 py-1 text-sm font-bold text-brand-ink dark:bg-brand-soft-dark dark:text-brand-ink-dark">
+      {children}
+    </Text>
+  );
 }
 
 function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: DistanceUnit; shoeName?: string }) {
@@ -66,24 +77,30 @@ function WorkoutDetails({ workout, unit, shoeName }: { workout: Workout; unit: D
         .join(', ')}
       className="gap-2"
     >
-      <View className="flex-row flex-wrap items-center justify-between gap-x-4">
-        <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{date}</Text>
-        <Text className="text-base font-bold text-black dark:text-white">
-          {TERRAIN_LABELS[workout.terrain]}
-          {workout.rpe !== undefined ? ` · RPE ${workout.rpe}` : ''}
-        </Text>
+      <View className="flex-row flex-wrap items-center justify-between gap-2">
+        <Text className="text-base font-semibold text-muted dark:text-muted-dark">{date}</Text>
+        <View className="flex-row gap-2">
+          <Badge>{TERRAIN_LABELS[workout.terrain]}</Badge>
+          {workout.rpe !== undefined ? <Badge>{`RPE ${workout.rpe}`}</Badge> : null}
+        </View>
       </View>
       <View className="flex-row flex-wrap items-end justify-between gap-x-4">
-        <Text className="text-3xl font-bold text-black dark:text-white" style={display}>
-          {formatDuration(pace)}
-          <Text className="text-lg font-semibold">/{unit}</Text>
+        <Text className="text-4xl font-extrabold text-ink dark:text-ink-dark" style={display}>
+          {distance}
+          <Text className="text-lg font-semibold"> {unit}</Text>
         </Text>
-        <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
-          {distance} {unit} · {formatDuration(workout.durationSeconds)}
-        </Text>
+        <View className="items-end">
+          <Text className="text-2xl font-bold text-brand-ink dark:text-brand-ink-dark" style={display}>
+            {formatDuration(pace)}
+            <Text className="text-base font-semibold">/{unit}</Text>
+          </Text>
+          <Text className="text-base font-semibold text-muted dark:text-muted-dark" style={display}>
+            {formatDuration(workout.durationSeconds)}
+          </Text>
+        </View>
       </View>
-      {shoeName ? <Text className="text-base text-neutral-700 dark:text-neutral-300">Tênis: {shoeName}</Text> : null}
-      {workout.note ? <Text className="text-base text-neutral-800 dark:text-neutral-200">{workout.note}</Text> : null}
+      {shoeName ? <Text className="text-base text-muted dark:text-muted-dark">Tênis: {shoeName}</Text> : null}
+      {workout.note ? <Text className="text-base text-ink dark:text-ink-dark">{workout.note}</Text> : null}
     </View>
   );
 }
@@ -122,10 +139,10 @@ function ShoeAlerts({ shoes, workouts, unit }: { shoes: Shoe[]; workouts: Workou
   if (alerts.length === 0) return null;
 
   return (
-    <Card variant="inverted" accessibilityRole="alert">
+    <Card variant="soft" accessibilityRole="alert" title="Seus tênis" icon="shoe">
       {alerts.map(({ shoe, meters }) => (
-        <Text key={shoe.id} className="text-base text-neutral-200 dark:text-neutral-800">
-          <Text className="font-bold text-white dark:text-black">
+        <Text key={shoe.id} className="text-base text-ink dark:text-ink-dark">
+          <Text className="font-bold text-brand-ink dark:text-brand-ink-dark">
             {shoeStatus(meters, shoe.limitMeters) === 'replace' ? 'Hora de trocar' : 'Perto da troca'}
           </Text>
           : {shoe.name} ({formatDistance(meters, unit)} de {formatDistance(shoe.limitMeters, unit)} {unit})
@@ -144,7 +161,7 @@ export function WorkoutLogScreen() {
   const summary = useMemo(() => summarizeWeek(workouts), [workouts]);
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>
       <KeyboardAware>
         <FlatList
           data={workouts}
@@ -152,19 +169,18 @@ export function WorkoutLogScreen() {
           renderItem={({ item }) => (
             <WorkoutItem workout={item} unit={unit} shoeName={item.shoeId ? shoeNames.get(item.shoeId) : undefined} />
           )}
-          contentContainerClassName="gap-3 p-4"
+          contentContainerClassName="gap-3 p-4 pb-8"
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
-            <View className="mb-2 gap-3">
-              <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-                Diário
-              </Text>
+            <View className="mb-2 gap-4">
+              <ScreenHeader eyebrow="Seus treinos" title="Diário" />
               <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
               <ShoeAlerts shoes={shoes} workouts={workouts} unit={unit} />
+              {workouts.length > 0 ? <SectionHeader level={2} icon="calendar">Histórico</SectionHeader> : null}
             </View>
           }
           ListEmptyComponent={
-            <Text className="text-lg text-neutral-700 dark:text-neutral-300">
+            <Text className="text-lg text-muted dark:text-muted-dark">
               Nenhum treino ainda. Calcule o pace na Calculadora e toque em “Salvar treino”.
             </Text>
           }

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { useColorScheme } from 'nativewind';
 import { ActivityIndicator, Pressable, Text, View, type PressableProps } from 'react-native';
 
 import { useStackedRow } from './ButtonRow';
+import { usePalette } from './palette';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'link' | 'danger' | 'danger-link';
 export type ButtonSize = 'md' | 'lg';
@@ -22,7 +22,7 @@ interface Props extends Pick<PressableProps, 'onPress' | 'accessibilityHint' | '
   expanded?: boolean;
 }
 
-const HEIGHT: Record<ButtonSize, string> = { md: 'min-h-12', lg: 'min-h-14' };
+const HEIGHT: Record<ButtonSize, string> = { md: 'min-h-12', lg: 'min-h-16' };
 const TEXT_SIZE: Record<ButtonSize, string> = { md: 'text-lg', lg: 'text-xl' };
 
 // Estado desativado único: cinza legível nos dois temas (e não opacidade, que
@@ -31,9 +31,9 @@ const DISABLED_BOX = 'bg-neutral-300 dark:bg-neutral-700';
 const DISABLED_TEXT = 'text-neutral-700 dark:text-neutral-300';
 
 const BOX: Record<ButtonVariant, string> = {
-  primary: 'rounded-xl bg-black px-4 dark:bg-white active:opacity-70',
-  secondary: 'rounded-xl border-2 border-black px-4 dark:border-white active:opacity-70',
-  danger: 'rounded-xl border-2 border-red-700 px-4 dark:border-red-400 active:opacity-70',
+  primary: 'rounded-2xl bg-brand px-5 dark:bg-brand-dark active:opacity-80',
+  secondary: 'rounded-2xl bg-surface-2 px-5 dark:bg-surface-2-dark active:opacity-70',
+  danger: 'rounded-2xl border-2 border-red-700 px-5 dark:border-red-400 active:opacity-70',
   // Sem padding lateral: o texto alinha com o título acima. A área de toque mantém
   // 48 pt de altura e pelo menos 48 pt de largura (min-w-12).
   link: 'min-w-12 self-start active:opacity-60',
@@ -41,10 +41,10 @@ const BOX: Record<ButtonVariant, string> = {
 };
 
 const LABEL: Record<ButtonVariant, string> = {
-  primary: 'font-bold text-white dark:text-black',
-  secondary: 'font-bold text-black dark:text-white',
+  primary: 'font-bold text-white',
+  secondary: 'font-bold text-ink dark:text-ink-dark',
   danger: 'font-bold text-red-700 dark:text-red-400',
-  link: 'text-base font-semibold text-black dark:text-white',
+  link: 'text-base font-semibold text-brand-ink dark:text-brand-ink-dark',
   'danger-link': 'text-base font-semibold text-red-700 dark:text-red-400',
 };
 
@@ -52,7 +52,7 @@ const LABEL: Record<ButtonVariant, string> = {
 // textDecorationLine sumia de forma intermitente após rebuilds; a borda é estável e,
 // com 2 px, mais visível sob sol.
 const UNDERLINE: Record<'link' | 'danger-link', string> = {
-  link: 'border-b-2 border-black dark:border-white',
+  link: 'border-b-2 border-brand-ink dark:border-brand-ink-dark',
   'danger-link': 'border-b-2 border-red-700 dark:border-red-400',
 };
 
@@ -70,10 +70,10 @@ export function Button({
 }: Props) {
   // Numa ButtonRow empilhada (fonte grande) o botão ocupa a largura toda, sem flex-1.
   const stacked = useStackedRow();
-  const { colorScheme } = useColorScheme();
+  const palette = usePalette();
   const off = disabled || busy;
   const isLink = variant === 'link' || variant === 'danger-link';
-  const box = off && !isLink ? `rounded-xl px-4 ${DISABLED_BOX}` : BOX[variant];
+  const box = off && !isLink ? `rounded-2xl px-5 ${DISABLED_BOX}` : BOX[variant];
   const text = off ? DISABLED_TEXT : LABEL[variant];
 
   const labelText = isLink ? (
@@ -95,8 +95,8 @@ export function Button({
     >
       {busy ? (
         <View className="flex-row items-center gap-2">
-          {/* Mesma cor do texto desativado (neutral-700 / neutral-300). */}
-          <ActivityIndicator size="small" color={colorScheme === 'dark' ? '#d4d4d4' : '#404040'} />
+          {/* Cor de texto secundário, próxima à do texto desativado. */}
+          <ActivityIndicator size="small" color={palette.muted} />
           {labelText}
         </View>
       ) : (

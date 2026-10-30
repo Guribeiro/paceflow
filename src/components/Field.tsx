@@ -23,15 +23,15 @@ export function Field({ label, error, fill = true, variant = 'number', showError
 
   return (
     <View className={fill ? 'flex-1' : undefined}>
-      <Text className="mb-1 text-base font-semibold text-neutral-800 dark:text-neutral-200">{label}</Text>
+      <Text className="mb-1 text-base font-semibold text-muted dark:text-muted-dark">{label}</Text>
       <TextInput
         {...inputProps}
         accessibilityLabel={label}
         accessibilityHint={error}
         autoCorrect={false}
-        className={`rounded-xl border-2 px-4 text-black dark:text-white ${
+        className={`rounded-2xl border-2 bg-surface px-4 text-ink dark:bg-surface-dark dark:text-ink-dark ${
           isNumber ? 'min-h-14 text-2xl font-bold' : 'min-h-12 text-lg'
-        } ${error ? 'border-red-700 dark:border-red-400' : 'border-black dark:border-white'}`}
+        } ${error ? 'border-red-700 dark:border-red-400' : 'border-bar dark:border-bar-dark'}`}
         placeholderTextColor={placeholderColor}
         style={isNumber ? display : undefined}
       />

@@ -20,7 +20,7 @@ export function WeekSummaryCard({ summary, unit, goalMeters }: Props) {
   const treinos = summary.count === 1 ? 'treino' : 'treinos';
 
   return (
-    <Card variant="inverted" gap={0}>
+    <Card variant="hero" gap={0}>
       {/* Só o resumo é agrupado: a meta é uma barra de progresso própria, que o
           leitor de tela não anunciaria dentro de um pai acessível. */}
       <View
@@ -29,16 +29,16 @@ export function WeekSummaryCard({ summary, unit, goalMeters }: Props) {
           .toFixed(1)
           .replace('.', ',')} ${spokenUnit}, ${summary.count} ${treinos}, ${spokenDuration(summary.durationSeconds)}`}
       >
-        <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Esta semana</Text>
+        <Text className="text-base font-semibold text-white">Esta semana</Text>
         <Text
-          className="text-5xl font-bold text-white dark:text-black"
+          className="text-5xl font-bold text-white"
           style={display}
           maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
         >
           {distance}
           <Text className="text-2xl"> {unit}</Text>
         </Text>
-        <Text className="text-lg font-semibold text-neutral-200 dark:text-neutral-800" style={display}>
+        <Text className="text-lg font-semibold text-white" style={display}>
           {summary.count} {treinos} · {formatDuration(summary.durationSeconds)}
         </Text>
       </View>
@@ -63,7 +63,7 @@ function GoalProgress({ distanceMeters, goalMeters, unit }: { distanceMeters: nu
       accessibilityValue={{ min: 0, max: 100, now: Math.min(100, progress.percent) }}
     >
       <ProgressBar ratio={progress.ratio} inverted />
-      <Text className="text-base font-semibold text-neutral-200 dark:text-neutral-800" style={display}>
+      <Text className="text-base font-semibold text-white" style={display}>
         {text}
       </Text>
     </View>

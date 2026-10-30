@@ -6,7 +6,7 @@ import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { confirmDestructive } from './ui/confirm';
-import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 /** Meta semanal digitada na unidade preferida e guardada em metros. */
 export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
@@ -22,9 +22,8 @@ export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
   }
 
   return (
-    <View className="gap-2">
-      <SectionHeader>Meta semanal</SectionHeader>
-      <Text className="text-base text-neutral-700 dark:text-neutral-300">
+    <Card gap={2} title="Meta semanal" icon="target">
+      <Text className="text-base text-muted dark:text-muted-dark">
         {goalMeters
           ? `Atual: ${formatDistance(goalMeters, unit)} ${unit} por semana.`
           : 'Sem meta. Defina quantos quilômetros quer correr por semana.'}
@@ -57,6 +56,6 @@ export function WeeklyGoalSetting({ unit }: { unit: DistanceUnit }) {
           }
         />
       ) : null}
-    </View>
+    </Card>
   );
 }

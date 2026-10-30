@@ -26,6 +26,8 @@ const straight = (fromS: number, toS: number, speed: number) =>
 const running = () => applySamples(startRun(T0), straight(0, 100, 3));
 /** 2,4 km a 4 m/s em 10 min: duas parciais de 4:10. */
 const finished = () => finishRun(applySamples(startRun(T0), straight(0, 600, 4)), T0 + 600_000);
+/** Corrida finalizada com as parciais dadas (instante acumulado de cada uma, em ms). */
+const withSplits = (...splits: number[]) => ({ ...finished(), splits });
 
 const permission = (canAskAgain: boolean): Location.LocationPermissionResponse => ({
   granted: false,
@@ -176,7 +178,7 @@ describe('Correr: finalizada', () => {
 
     expect(screen.getByLabelText('Distância: 2,40 quilômetros')).toBeOnTheScreen();
     expect(screen.getByLabelText('Tempo: 10 minutos')).toBeOnTheScreen();
-    expect(screen.getByText('Pace médio: 4:10/km')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Pace médio: 4:10 por quilômetro')).toBeOnTheScreen();
     expect(screen.getByLabelText('Quilômetro 1: 4 minutos e 10 segundos')).toBeOnTheScreen();
     expect(screen.getByLabelText('Quilômetro 2: 4 minutos e 10 segundos')).toBeOnTheScreen();
   });
@@ -272,5 +274,37 @@ describe('Correr: finalizada', () => {
 
     expect(runRepository.get()?.status).toBe('finished');
     expect(screen.getByText('Corrida finalizada')).toBeOnTheScreen();
+  });
+});
+
+describe('Correr: parcial mais rápida', () => {
+  it('destaca só a parcial mais rápida, por texto e no rótulo falado', async () => {
+    // 4:10, 4:00 e 4:15.
+    runRepository.set(withSplits(250_000, 490_000, 745_000));
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Quilômetro 2: 4 minutos, a mais rápida')).toBeOnTheScreen();
+    expect(screen.getByText('2 km · mais rápida')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 1: 4 minutos e 10 segundos')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Quilômetro 3: 4 minutos e 15 segundos')).toBeOnTheScreen();
+    expect(screen.getAllByText(/mais rápida/)).toHaveLength(1);
+  });
+
+  it('empate no segundo exibido não destaca nenhuma', async () => {
+    // 4:10,4 e 4:09,6: a segunda é mais rápida por fração, mas as duas aparecem como 4:10.
+    runRepository.set(withSplits(250_400, 500_000));
+    await render(<RunScreen />);
+
+    expect(screen.getAllByLabelText(/^Quilômetro \d: /)).toHaveLength(2);
+    expect(screen.queryByLabelText(/a mais rápida/)).toBeNull();
+    expect(screen.queryByText(/mais rápida/)).toBeNull();
+  });
+
+  it('com uma parcial só, não há destaque', async () => {
+    runRepository.set(withSplits(250_000));
+    await render(<RunScreen />);
+
+    expect(screen.getByLabelText('Quilômetro 1: 4 minutos e 10 segundos')).toBeOnTheScreen();
+    expect(screen.queryByText(/mais rápida/)).toBeNull();
   });
 });

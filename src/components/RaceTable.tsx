@@ -9,7 +9,7 @@ interface Props {
 
 export function RaceTable({ races }: Props) {
   return (
-    <View className="rounded-xl border-2 border-black dark:border-white">
+    <View className="rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
       {races.map((race, index) => (
         <View
           key={race.id}
@@ -18,15 +18,15 @@ export function RaceTable({ races }: Props) {
             race.secondsPerKm,
           )} por quilômetro`}
           className={`flex-row flex-wrap items-center justify-between gap-x-4 px-4 py-3 ${
-            index > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
+            index > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''
           }`}
         >
-          <Text className="text-lg font-semibold text-black dark:text-white">{race.label}</Text>
+          <Text className="text-lg font-semibold text-ink dark:text-ink-dark">{race.label}</Text>
           <View className="items-end">
-            <Text className="text-2xl font-bold text-black dark:text-white" style={display}>
+            <Text className="text-2xl font-bold text-ink dark:text-ink-dark" style={display}>
               {formatDuration(race.durationSeconds)}
             </Text>
-            <Text className="text-base text-neutral-700 dark:text-neutral-300" style={tabular}>
+            <Text className="text-base text-muted dark:text-muted-dark" style={tabular}>
               {formatDuration(race.secondsPerKm)}/km
             </Text>
           </View>

@@ -23,8 +23,8 @@ interface Props {
 
 /**
  * Barras de distância por semana. Uma série só (sem legenda: o título nomeia),
- * barra selecionada em cor de texto e as demais em cinza com contraste ≥ 3:1
- * nos dois temas; 2 px entre barras, topo arredondado, eixo com 3 rótulos.
+ * barra selecionada em laranja e as demais em cinza, ambas com contraste ≥ 3:1
+ * nos dois temas (palette.test.ts); 2 px entre barras, topo arredondado, eixo com 3 rótulos.
  */
 export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: Props) {
   const maxWeek = Math.max(...weeks.map((w) => w.distanceMeters), 0);
@@ -35,7 +35,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
 
   return (
     <View className="gap-1">
-      <View className="h-44 flex-row items-end gap-0.5 border-b border-neutral-400">
+      <View className="h-44 flex-row items-end gap-0.5 border-b-2 border-surface-2 dark:border-surface-2-dark">
         {weeks.map((week, index) => {
           const isSelected = index === selected;
           const ratio = week.distanceMeters / scaleMax;
@@ -54,7 +54,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
             >
               <View
                 style={{ height: week.distanceMeters > 0 ? Math.max(2, ratio * CHART_HEIGHT) : 0 }}
-                className={`rounded-t ${isSelected ? 'bg-black dark:bg-white' : 'bg-neutral-500 dark:bg-[#8f8f8f]'}`}
+                className={`rounded-t-md ${isSelected ? 'bg-brand-ink dark:bg-brand-ink-dark' : 'bg-bar dark:bg-bar-dark'}`}
               />
             </Pressable>
           );
@@ -66,9 +66,12 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
             accessible
             accessibilityLabel={`Meta semanal: ${formatDistance(goalMeters, unit)} ${spokenUnit}`}
             style={{ bottom: (goalMeters / scaleMax) * CHART_HEIGHT }}
-            className="absolute left-0 right-0 border-t-2 border-dashed border-black dark:border-white"
+            className="absolute left-0 right-0 border-t-2 border-dashed border-ink dark:border-ink-dark"
           >
-            <Text className="self-end bg-white px-1 text-sm font-bold text-black dark:bg-black dark:text-white" style={display}>
+            <Text
+              className="self-end rounded-md bg-surface px-1 text-sm font-bold text-ink dark:bg-surface-dark dark:text-ink-dark"
+              style={display}
+            >
               Meta {formatDistance(goalMeters, unit)} {unit}
             </Text>
           </View>
@@ -77,7 +80,7 @@ export function WeeklyBarChart({ weeks, unit, selected, onSelect, goalMeters }: 
 
       <View className="flex-row justify-between" importantForAccessibility="no-hide-descendants">
         {axisIndexes.map((i) => (
-          <Text key={i} className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+          <Text key={i} className="text-sm font-semibold text-muted dark:text-muted-dark">
             {i === lastIndex ? 'Esta semana' : weekLabel(weeks[i].weekStart)}
           </Text>
         ))}

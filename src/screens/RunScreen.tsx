@@ -8,7 +8,11 @@ import { Button } from '../components/ui/Button';
 import { ButtonRow } from '../components/ui/ButtonRow';
 import { Card } from '../components/ui/Card';
 import { confirmDestructive } from '../components/ui/confirm';
+import { Icon } from '../components/ui/Icon';
+import { ON_BRAND } from '../components/ui/palette';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { StatTile } from '../components/ui/StatTile';
 import { display, tabular } from '../components/ui/typography';
 import {
   type StartResult,
@@ -21,7 +25,6 @@ import {
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
 import { type RunState, currentPace, elapsedMs, splitDurations } from '../domain/run-tracker';
 import { NOTE_MAX_LENGTH } from '../domain/workout';
-import { BIG_NUMBER_MAX_SCALE } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useRunSession } from '../hooks/useRunSession';
 
@@ -40,45 +43,40 @@ const splitUnit = (run: RunState): DistanceUnit => (run.splitMeters === SPLIT_ME
 
 const perUnit = (secondsPerKm: number, unit: DistanceUnit) => (unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
 
-function BigNumber({ label, value, suffix, spoken }: { label: string; value: string; suffix?: string; spoken: string }) {
-  return (
-    <View accessible accessibilityLabel={`${label}: ${spoken}`} className="min-w-36 flex-1">
-      <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{label}</Text>
-      <Text
-        className="text-5xl font-bold text-black dark:text-white"
-        style={display}
-        maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
-      >
-        {value}
-        {suffix ? <Text className="text-xl font-semibold"> {suffix}</Text> : null}
-      </Text>
-    </View>
-  );
-}
-
 function SplitList({ run }: { run: RunState }) {
   const splits = splitDurations(run);
   const unit = splitUnit(run);
   if (splits.length === 0) return null;
+  // Só destaca quando uma parcial é a única mais rápida no segundo exibido (empate não tem destaque).
+  const shown = splits.map(Math.round);
+  const min = Math.min(...shown);
+  const fastest = shown.length > 1 && shown.filter((s) => s === min).length === 1 ? shown.indexOf(min) : -1;
   return (
-    <View className="gap-1">
-      <SectionHeader level={2}>Parciais</SectionHeader>
-      {splits.map((seconds, i) => (
-        <View
-          key={i}
-          accessible
-          accessibilityLabel={`${unit === 'km' ? 'Quilômetro' : 'Milha'} ${i + 1}: ${spokenDuration(seconds)}`}
-          className="flex-row justify-between"
-        >
-          <Text className="text-lg text-black dark:text-white">
-            {i + 1} {unit}
-          </Text>
-          <Text className="text-lg font-semibold text-black dark:text-white" style={display}>
-            {formatDuration(seconds)}
-          </Text>
-        </View>
-      ))}
-    </View>
+    <Card gap={0} title="Parciais" icon="flag">
+      {splits.map((seconds, i) => {
+        // A mais rápida marcada por texto, não só pela cor.
+        const best = i === fastest;
+        return (
+          <View
+            key={i}
+            accessible
+            accessibilityLabel={`${unit === 'km' ? 'Quilômetro' : 'Milha'} ${i + 1}: ${spokenDuration(seconds)}${best ? ', a mais rápida' : ''}`}
+            className={`min-h-12 flex-row items-center justify-between ${i > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''}`}
+          >
+            <Text className="text-lg text-ink dark:text-ink-dark">
+              {i + 1} {unit}
+              {best ? ' · mais rápida' : ''}
+            </Text>
+            <Text
+              className={`text-xl font-bold ${best ? 'text-brand-ink dark:text-brand-ink-dark' : 'text-ink dark:text-ink-dark'}`}
+              style={display}
+            >
+              {formatDuration(seconds)}
+            </Text>
+          </View>
+        );
+      })}
+    </Card>
   );
 }
 
@@ -90,34 +88,49 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
   const paused = run.status === 'paused';
 
   return (
-    <View className="gap-6">
-      <Card gap={4}>
-        {paused ? (
-          <Text accessibilityLiveRegion="polite" className="text-lg font-bold text-black dark:text-white">
-            ⏸ Pausada
+    <View className="gap-4">
+      {paused ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          className="self-start overflow-hidden rounded-full bg-brand-soft px-4 py-2 text-lg font-bold text-brand-ink dark:bg-brand-soft-dark dark:text-brand-ink-dark"
+        >
+          ⏸ Pausada
+        </Text>
+      ) : null}
+      <StatTile
+        variant="hero"
+        size="lg"
+        label="Tempo"
+        value={formatDuration(seconds)}
+        spoken={spokenDuration(seconds)}
+        className=""
+      />
+      <View className="flex-row flex-wrap gap-3">
+        <StatTile
+          size="lg"
+          label="Distância"
+          value={formatDistance(run.distanceMeters, unit)}
+          suffix={unit}
+          suffixBelow
+          spoken={`${formatDistance(run.distanceMeters, unit)} ${unit === 'km' ? 'quilômetros' : 'milhas'}`}
+        />
+        <StatTile
+          size="lg"
+          label="Pace atual"
+          value={pace !== null ? formatDuration(perUnit(pace, unit)) : '--:--'}
+          suffix={`min/${unit}`}
+          suffixBelow
+          spoken={pace !== null ? `${formatDuration(perUnit(pace, unit))} por ${unit === 'km' ? 'quilômetro' : 'milha'}` : 'sem leitura'}
+        />
+      </View>
+      {lastSplit !== undefined ? (
+        <Card variant="soft" gap={0}>
+          <Text className="text-lg font-semibold text-ink dark:text-ink-dark" style={tabular}>
+            Última parcial ({splits.length} {splitUnit(run)}):{' '}
+            <Text className="font-bold text-brand-ink dark:text-brand-ink-dark">{formatDuration(lastSplit)}</Text>
           </Text>
-        ) : null}
-        <BigNumber label="Tempo" value={formatDuration(seconds)} spoken={spokenDuration(seconds)} />
-        <View className="flex-row flex-wrap gap-4">
-          <BigNumber
-            label="Distância"
-            value={formatDistance(run.distanceMeters, unit)}
-            suffix={unit}
-            spoken={`${formatDistance(run.distanceMeters, unit)} ${unit === 'km' ? 'quilômetros' : 'milhas'}`}
-          />
-          <BigNumber
-            label="Pace atual"
-            value={pace !== null ? formatDuration(perUnit(pace, unit)) : '--:--'}
-            suffix={`/${unit}`}
-            spoken={pace !== null ? `${formatDuration(perUnit(pace, unit))} por ${unit === 'km' ? 'quilômetro' : 'milha'}` : 'sem leitura'}
-          />
-        </View>
-        {lastSplit !== undefined ? (
-          <Text className="text-lg text-black dark:text-white" style={tabular}>
-            Última parcial ({splits.length} {splitUnit(run)}): {formatDuration(lastSplit)}
-          </Text>
-        ) : null}
-      </Card>
+        </Card>
+      ) : null}
 
       {paused ? (
         <ButtonRow>
@@ -127,7 +140,7 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
       ) : (
         <Button label="Pausar" size="lg" onPress={() => pauseRunSession()} />
       )}
-      <Text className="text-base text-neutral-700 dark:text-neutral-300">
+      <Text className="text-base text-muted dark:text-muted-dark">
         {paused
           ? 'Pausada: tempo e distância não contam. Finalize para registrar a corrida.'
           : 'Pode apagar a tela e guardar o celular: a gravação continua. Pause para finalizar.'}
@@ -154,25 +167,30 @@ function FinishedRun({
   const average = canSave ? perUnit(seconds / km, unit) : null;
 
   return (
-    <View className="gap-6">
-      <Card gap={4}>
-        <SectionHeader>Corrida finalizada</SectionHeader>
-        <View className="flex-row flex-wrap gap-4">
-          <BigNumber
-            label="Distância"
-            value={formatDistance(run.distanceMeters, unit)}
-            suffix={unit}
-            spoken={`${formatDistance(run.distanceMeters, unit)} ${unit === 'km' ? 'quilômetros' : 'milhas'}`}
-          />
-          <BigNumber label="Tempo" value={formatDuration(seconds)} spoken={spokenDuration(seconds)} />
-        </View>
-        {average !== null ? (
-          <Text className="text-lg text-black dark:text-white" style={tabular}>
-            Pace médio: {formatDuration(average)}/{unit}
-          </Text>
-        ) : null}
-        <SplitList run={run} />
-      </Card>
+    <View className="gap-4">
+      <SectionHeader icon="trophy">Corrida finalizada</SectionHeader>
+      <View className="flex-row flex-wrap gap-3">
+        <StatTile
+          variant="hero"
+          size="lg"
+          label="Distância"
+          value={formatDistance(run.distanceMeters, unit)}
+          suffix={unit}
+          suffixBelow
+          spoken={`${formatDistance(run.distanceMeters, unit)} ${unit === 'km' ? 'quilômetros' : 'milhas'}`}
+        />
+        <StatTile size="lg" label="Tempo" value={formatDuration(seconds)} spoken={spokenDuration(seconds)} />
+      </View>
+      {average !== null ? (
+        <StatTile
+          label="Pace médio"
+          value={formatDuration(average)}
+          suffix={`/${unit}`}
+          spoken={`${formatDuration(average)} por ${unit === 'km' ? 'quilômetro' : 'milha'}`}
+          className=""
+        />
+      ) : null}
+      <SplitList run={run} />
 
       {canSave ? (
         <SaveWorkoutForm
@@ -183,7 +201,7 @@ function FinishedRun({
           onSaved={onSaved}
         />
       ) : (
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+        <Text className="text-base text-muted dark:text-muted-dark">
           A corrida ficou curta demais para registrar no diário.
         </Text>
       )}
@@ -231,30 +249,32 @@ export function RunScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>
       <KeyboardAware>
-        <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
-          <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-            Correr
-          </Text>
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" keyboardShouldPersistTaps="handled">
+          <ScreenHeader eyebrow="Gravar com GPS" title="Correr" />
 
           {run === null ? (
-            <View className="gap-6">
+            <View className="gap-5">
               {saved ? (
-                <Card gap={1}>
+                <Card variant="soft" gap={1}>
                   <Text
                     accessibilityLiveRegion="polite"
                     accessibilityLabel={`Corrida salva no diário${saved.celebration ? `. ${saved.celebration.spoken}` : ''}`}
-                    className="text-lg font-bold text-black dark:text-white"
+                    className="text-lg font-bold text-ink dark:text-ink-dark"
                   >
                     {`✓ Corrida salva no diário${saved.celebration ? `\n${saved.celebration.text}` : ''}`}
                   </Text>
                 </Card>
               ) : (
-                <Text className="text-base text-neutral-700 dark:text-neutral-300">
-                  Grava tempo, distância e parciais pelo GPS, com a tela apagada. A rota não é guardada. Comece ao ar
-                  livre, com o céu aberto.
-                </Text>
+                <Card variant="hero" gap={2}>
+                  <Icon name="run" color={ON_BRAND} size={56} />
+                  <Text className="text-2xl font-extrabold text-white">Pronto para correr?</Text>
+                  <Text className="text-base text-white">
+                    Grava tempo, distância e parciais pelo GPS, com a tela apagada. A rota não é guardada. Comece ao ar
+                    livre, com o céu aberto.
+                  </Text>
+                </Card>
               )}
               {error ? (
                 <Card gap={2}>

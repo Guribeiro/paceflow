@@ -15,6 +15,7 @@ import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; spoken: string }[] = [
   { value: 'system', label: 'Sistema', spoken: 'Tema do sistema' },
@@ -33,16 +34,16 @@ export function SettingsScreen() {
   const workouts = useWorkouts();
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>
       <KeyboardAware>
-        <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
-          <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-            Ajustes
-          </Text>
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" keyboardShouldPersistTaps="handled">
+          <ScreenHeader eyebrow="Seu PaceFlow" title="Ajustes" />
 
           {/* Seleção obrigatória: tocar na opção ativa não desmarca. */}
-          <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
-          <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
+          <Card gap={4} title="Aparência" icon="palette">
+            <ChoiceChips label="Tema" options={THEME_OPTIONS} value={theme} onChange={(v) => v && setTheme(v)} />
+            <ChoiceChips label="Unidade" options={UNIT_OPTIONS} value={unit} onChange={(v) => v && setUnit(v)} />
+          </Card>
           <WeeklyGoalSetting unit={unit} />
           <RemindersSection />
           <ShoesSection unit={unit} />
@@ -50,9 +51,8 @@ export function SettingsScreen() {
 
           <AccountSection />
 
-          <Card gap={1}>
-            <Text className="text-lg font-bold text-black dark:text-white">PaceFlow {Constants.expoConfig?.version}</Text>
-            <Text className="text-base text-neutral-700 dark:text-neutral-300">
+          <Card gap={1} title={`PaceFlow ${Constants.expoConfig?.version ?? ''}`.trim()} icon="info">
+            <Text className="text-base text-muted dark:text-muted-dark">
               Seus treinos ficam neste aparelho e o app funciona sem conta. A nuvem é opcional; o Backup acima
               exporta e restaura arquivos.
             </Text>

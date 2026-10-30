@@ -11,7 +11,6 @@ import { Field } from './Field';
 import { WeekdayPicker } from './WeekdayPicker';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { SectionHeader } from './ui/SectionHeader';
 import { Toggle } from './ui/Toggle';
 
 type Kind = 'training' | 'weeklyGoal' | 'race';
@@ -53,11 +52,10 @@ export function RemindersSection() {
   }
 
   return (
-    <View className="gap-4">
-      <SectionHeader>Lembretes</SectionHeader>
+    <Card gap={4} title="Lembretes" icon="bell">
 
       {blocked ? (
-        <Card gap={2}>
+        <Card variant="outline" gap={2}>
           <Text className="text-base font-semibold text-red-700 dark:text-red-400">
             As notificações do PaceFlow estão desativadas. Ative em Configurações › Apps › PaceFlow › Notificações.
           </Text>
@@ -79,7 +77,7 @@ export function RemindersSection() {
             onChange={(trainingDays) => update({ trainingDays })}
           />
           {prefs.trainingDays.length === 0 ? (
-            <Text className="text-base text-neutral-700 dark:text-neutral-300">Escolha pelo menos um dia.</Text>
+            <Text className="text-base text-muted dark:text-muted-dark">Escolha pelo menos um dia.</Text>
           ) : null}
           <ChoiceChips
             label={`Horário: ${prefs.time}`}
@@ -126,6 +124,6 @@ export function RemindersSection() {
         value={prefs.race}
         onChange={(on) => void toggle('race', on)}
       />
-    </View>
+    </Card>
   );
 }

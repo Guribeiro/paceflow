@@ -32,7 +32,7 @@ export function TrainingPaces({ distanceKm, durationSeconds, unit }: Props) {
 
   if (!result.ok) {
     return (
-      <Text className="text-base text-neutral-700 dark:text-neutral-300">
+      <Text className="text-base text-muted dark:text-muted-dark">
         Para sugerir paces de treino, use um esforço de prova entre 1,5 e 42,2 km, com duração entre 3 minutos e 6 horas.
       </Text>
     );
@@ -45,7 +45,7 @@ export function TrainingPaces({ distanceKm, durationSeconds, unit }: Props) {
 
   return (
     <View className="gap-2">
-      <View className="rounded-xl border-2 border-black dark:border-white">
+      <View className="rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
         {ZONES.map(({ zone, label, hint, showLap }, index) => {
           const range = result.value[zone];
           const lap = showLap ? formatDuration(range.fastest * 0.4) : null;
@@ -59,19 +59,19 @@ export function TrainingPaces({ distanceKm, durationSeconds, unit }: Props) {
               accessible
               accessibilityLabel={`${label}: ${spoken} por ${spokenUnit}${lap ? `, ${spokenDuration(range.fastest * 0.4)} a cada 400 metros` : ''}. ${hint}`}
               className={`flex-row flex-wrap items-center justify-between gap-x-4 px-4 py-3 ${
-                index > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
+                index > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''
               }`}
             >
               <View className="shrink">
-                <Text className="text-lg font-semibold text-black dark:text-white">{label}</Text>
-                <Text className="text-sm text-neutral-700 dark:text-neutral-300">{hint}</Text>
+                <Text className="text-lg font-semibold text-ink dark:text-ink-dark">{label}</Text>
+                <Text className="text-sm text-muted dark:text-muted-dark">{hint}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-xl font-bold text-black dark:text-white" style={display}>
+                <Text className="text-xl font-bold text-ink dark:text-ink-dark" style={display}>
                   {describe(range)}/{unit}
                 </Text>
                 {lap ? (
-                  <Text className="text-base text-neutral-700 dark:text-neutral-300" style={tabular}>
+                  <Text className="text-base text-muted dark:text-muted-dark" style={tabular}>
                     {lap} por 400 m
                   </Text>
                 ) : null}
@@ -80,7 +80,7 @@ export function TrainingPaces({ distanceKm, durationSeconds, unit }: Props) {
           );
         })}
       </View>
-      <Text className="text-sm text-neutral-700 dark:text-neutral-300">
+      <Text className="text-sm text-muted dark:text-muted-dark">
         Estimativas pelas fórmulas de Daniels e Gilbert a partir de um esforço de prova. Use um resultado recente e
         feito no limite.
       </Text>

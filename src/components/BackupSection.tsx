@@ -6,7 +6,7 @@ import { type ImportOutcome, importWorkoutsFromFile } from '../data/import/impor
 import type { ExportFormat } from '../domain/export';
 import { useLargeText } from '../hooks/useLargeText';
 import { Button } from './ui/Button';
-import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 type Action = ExportFormat | 'import';
 
@@ -84,8 +84,7 @@ export function BackupSection({ canExport }: Props) {
   );
 
   return (
-    <View className="gap-2">
-      <SectionHeader>Backup</SectionHeader>
+    <Card gap={2} title="Backup" icon="backup">
       <View className={`${large ? 'flex-col' : 'flex-row'} gap-3`}>
         {canExport
           ? FORMATS.map(({ format, label, hint }) => button(format, label, `Exportar ${label}`, hint))
@@ -96,12 +95,12 @@ export function BackupSection({ canExport }: Props) {
         <Text
           accessibilityLiveRegion="polite"
           className={`text-base font-semibold ${
-            message.isError ? 'text-red-700 dark:text-red-400' : 'text-black dark:text-white'
+            message.isError ? 'text-red-700 dark:text-red-400' : 'text-ink dark:text-ink-dark'
           }`}
         >
           {message.text}
         </Text>
       ) : null}
-    </View>
+    </Card>
   );
 }

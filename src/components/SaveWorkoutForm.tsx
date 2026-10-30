@@ -15,7 +15,6 @@ import { NO_SHOE, ShoePicker } from './ShoePicker';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { SectionHeader } from './ui/SectionHeader';
 
 interface Props {
   /** null enquanto distância ou tempo estão inválidos: o formulário segue montado e o botão desativa. */
@@ -82,8 +81,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds, initialTerrain, i
   }
 
   return (
-    <Card gap={4}>
-      <SectionHeader>Registrar no diário</SectionHeader>
+    <Card gap={4} title="Registrar no diário" icon="run">
 
       <ChoiceChips
         label="Dia"
@@ -134,7 +132,7 @@ export function SaveWorkoutForm({ distanceKm, durationSeconds, initialTerrain, i
             status === 'saved' ? `Treino salvo no diário${celebration ? `. ${celebration.spoken}` : ''}` : undefined
           }
           className={`text-base font-semibold ${
-            status === 'saved' ? 'text-black dark:text-white' : 'text-red-700 dark:text-red-400'
+            status === 'saved' ? 'text-ink dark:text-ink-dark' : 'text-red-700 dark:text-red-400'
           }`}
         >
           {status === 'saved'

@@ -10,7 +10,7 @@ import { RaceTable } from '../components/RaceTable';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
 import { TrainingPaces } from '../components/TrainingPaces';
 import { UnitToggle } from '../components/UnitToggle';
-import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
+import { useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import {
   calculatePace,
@@ -23,7 +23,8 @@ import {
 } from '../domain/pace';
 import { Card } from '../components/ui/Card';
 import { Disclosure } from '../components/ui/Disclosure';
-import { display } from '../components/ui/typography';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { StatTile } from '../components/ui/StatTile';
 
 const INCOMPLETE = 'Informe distância e tempo válidos.';
 
@@ -74,15 +75,10 @@ export function CalculatorScreen() {
   const speedUnit = unit === 'km' ? 'km/h' : 'mph';
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>
       <KeyboardAware>
-        <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
-          <View className={`${large ? 'flex-col items-start gap-3' : 'flex-row items-center justify-between'}`}>
-            <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-              Calculadora
-            </Text>
-            <UnitToggle value={unit} onChange={setUnit} />
-          </View>
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" keyboardShouldPersistTaps="handled">
+          <ScreenHeader eyebrow="Ritmo e provas" title="Calculadora" action={<UnitToggle value={unit} onChange={setUnit} />} />
 
           <ChoiceChips
             label="Modo"
@@ -96,69 +92,57 @@ export function CalculatorScreen() {
 
           {mode === 'pace' ? (
             <>
-              <View className={`${row} gap-3`} testID="calculator-fields">
-                <Field
-                  label={`Distância (${unit})`}
-                  value={distanceText}
-                  onChangeText={setDistanceText}
-                  placeholder="5"
-                  keyboardType="decimal-pad"
-                  error={distanceError}
-                  fill={!large}
-                />
-                <Field
-                  label="Tempo"
-                  value={durationText}
-                  onChangeText={setDurationText}
-                  placeholder="25:00"
-                  keyboardType="numbers-and-punctuation"
-                  error={durationError}
-                  fill={!large}
-                />
-              </View>
+              <Card title="Seu treino" icon="timer">
+                <View className={`${row} gap-3`} testID="calculator-fields">
+                  <Field
+                    label={`Distância (${unit})`}
+                    value={distanceText}
+                    onChangeText={setDistanceText}
+                    placeholder="5"
+                    keyboardType="decimal-pad"
+                    error={distanceError}
+                    fill={!large}
+                  />
+                  <Field
+                    label="Tempo"
+                    value={durationText}
+                    onChangeText={setDurationText}
+                    placeholder="25:00"
+                    keyboardType="numbers-and-punctuation"
+                    error={durationError}
+                    fill={!large}
+                  />
+                </View>
+              </Card>
 
               <View className={`${row} gap-3`} testID="calculator-results">
-                <Card
-                  variant="inverted"
-                  gap={0}
-                  className={cell}
-                  accessible
-                  accessibilityLabel={
+                <StatTile
+                  variant="hero"
+                  size="lg"
+                  label="Pace"
+                  value={mainPace !== undefined ? formatDuration(mainPace) : '--:--'}
+                  suffix={`min/${unit}`}
+                  suffixBelow
+                  spoken={
                     mainPace !== undefined
-                      ? `Pace: ${spokenDuration(mainPace)} por ${unit === 'km' ? 'quilômetro' : 'milha'}`
-                      : 'Pace: informe distância e tempo'
+                      ? `${spokenDuration(mainPace)} por ${unit === 'km' ? 'quilômetro' : 'milha'}`
+                      : 'informe distância e tempo'
                   }
-                >
-                  <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">Pace</Text>
-                  <Text
-                    className="text-5xl font-bold text-white dark:text-black"
-                    style={display}
-                    maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
-                  >
-                    {mainPace !== undefined ? formatDuration(mainPace) : '--:--'}
-                  </Text>
-                  <Text className="text-base font-semibold text-neutral-300 dark:text-neutral-700">min/{unit}</Text>
-                </Card>
-                <Card
-                  gap={0}
                   className={cell}
-                  accessible
-                  accessibilityLabel={
+                />
+                <StatTile
+                  size="lg"
+                  label="Velocidade média"
+                  value={mainSpeed !== undefined ? mainSpeed.toFixed(1).replace('.', ',') : '--'}
+                  suffix={speedUnit}
+                  suffixBelow
+                  spoken={
                     mainSpeed !== undefined
-                      ? `Velocidade média: ${mainSpeed.toFixed(1).replace('.', ',')} ${speedUnit}`
-                      : 'Velocidade média: informe distância e tempo'
+                      ? `${mainSpeed.toFixed(1).replace('.', ',')} ${speedUnit}`
+                      : 'informe distância e tempo'
                   }
-                >
-                  <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">Velocidade</Text>
-                  <Text
-                    className="text-5xl font-bold text-black dark:text-white"
-                    style={display}
-                    maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
-                  >
-                    {mainSpeed !== undefined ? mainSpeed.toFixed(1).replace('.', ',') : '--'}
-                  </Text>
-                  <Text className="text-base font-semibold text-neutral-700 dark:text-neutral-300">{speedUnit}</Text>
-                </Card>
+                  className={cell}
+                />
               </View>
 
               {/* A ação mais usada logo abaixo do resultado; consultas ficam recolhidas. */}
@@ -169,29 +153,33 @@ export function CalculatorScreen() {
                     durationSeconds={pace && duration.ok ? duration.value : null}
                   />
 
-                  <Disclosure title="Projeção de provas" showLabel="Ver projeção" hideLabel="Ocultar projeção">
-                    {races ? (
-                      <>
-                        <RaceTable races={races} />
-                        <Text className="text-sm text-neutral-700 dark:text-neutral-300">
-                          Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
-                        </Text>
-                      </>
-                    ) : (
-                      <Text className="text-base text-neutral-700 dark:text-neutral-300">{INCOMPLETE}</Text>
-                    )}
-                  </Disclosure>
+                  <Card title="Projeção de provas" icon="flag">
+                    <Disclosure showLabel="Ver projeção" hideLabel="Ocultar projeção">
+                      {races ? (
+                        <>
+                          <RaceTable races={races} />
+                          <Text className="text-sm text-muted dark:text-muted-dark">
+                            Estimativa pela fórmula de Riegel. Funciona melhor para provas próximas da distância informada.
+                          </Text>
+                        </>
+                      ) : (
+                        <Text className="text-base text-muted dark:text-muted-dark">{INCOMPLETE}</Text>
+                      )}
+                    </Disclosure>
+                  </Card>
 
-                  <Disclosure title="Paces de treino" showLabel="Ver paces" hideLabel="Ocultar paces">
-                    {pace && duration.ok ? (
-                      <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
-                    ) : (
-                      <Text className="text-base text-neutral-700 dark:text-neutral-300">{INCOMPLETE}</Text>
-                    )}
-                  </Disclosure>
+                  <Card title="Paces de treino" icon="speed">
+                    <Disclosure showLabel="Ver paces" hideLabel="Ocultar paces">
+                      {pace && duration.ok ? (
+                        <TrainingPaces distanceKm={pace.distanceKm} durationSeconds={duration.value} unit={unit} />
+                      ) : (
+                        <Text className="text-base text-muted dark:text-muted-dark">{INCOMPLETE}</Text>
+                      )}
+                    </Disclosure>
+                  </Card>
                 </>
               ) : (
-                <Text className="text-base text-neutral-700 dark:text-neutral-300">
+                <Text className="text-base text-muted dark:text-muted-dark">
                   Informe distância e tempo para ver o pace, registrar o treino e ver projeções.
                 </Text>
               )}

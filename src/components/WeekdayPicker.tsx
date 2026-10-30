@@ -21,7 +21,7 @@ interface Props {
 export function WeekdayPicker({ label, value, onChange }: Props) {
   return (
     <View className="gap-2">
-      <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">{label}</Text>
+      <Text className="text-base font-semibold text-ink dark:text-ink-dark">{label}</Text>
       <View className="flex-row flex-wrap gap-2" accessibilityLabel={label}>
         {DAYS.map((day) => {
           const selected = value.includes(day.value);
@@ -32,11 +32,11 @@ export function WeekdayPicker({ label, value, onChange }: Props) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: selected }}
               accessibilityLabel={day.spoken}
-              className={`min-h-12 min-w-12 items-center justify-center rounded-xl border-2 border-black px-3 active:opacity-70 dark:border-white ${
-                selected ? 'bg-black dark:bg-white' : ''
+              className={`min-h-12 min-w-12 items-center justify-center rounded-full px-3 active:opacity-70 ${
+                selected ? 'bg-brand dark:bg-brand-dark' : 'bg-surface-2 dark:bg-surface-2-dark'
               }`}
             >
-              <Text className={`text-lg font-bold ${selected ? 'text-white dark:text-black' : 'text-black dark:text-white'}`}>
+              <Text className={`text-lg font-bold ${selected ? 'text-white' : 'text-ink dark:text-ink-dark'}`}>
                 {day.label}
               </Text>
             </Pressable>

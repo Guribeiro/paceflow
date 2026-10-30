@@ -9,38 +9,17 @@ import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
-import { BIG_NUMBER_MAX_SCALE, useLargeText } from '../hooks/useLargeText';
+import { useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
 import { Disclosure } from '../components/ui/Disclosure';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { ScreenHeader } from '../components/ui/ScreenHeader';
+import { StatTile } from '../components/ui/StatTile';
 import { display } from '../components/ui/typography';
 
 const WEEKS = 12;
-
-function StatTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <Card
-      accessible
-      accessibilityLabel={`${label}: ${value}${detail ? `, ${detail}` : ''}`}
-      gap={1}
-      compact
-      className="min-w-36 flex-1"
-    >
-      <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{label}</Text>
-      <Text
-        className="text-2xl font-bold text-black dark:text-white"
-        style={display}
-        maxFontSizeMultiplier={BIG_NUMBER_MAX_SCALE}
-      >
-        {value}
-      </Text>
-      {detail ? <Text className="text-sm text-neutral-700 dark:text-neutral-300">{detail}</Text> : null}
-    </Card>
-  );
-}
 
 export function TrendsScreen() {
   const workouts = useWorkouts();
@@ -56,29 +35,26 @@ export function TrendsScreen() {
   const weekPace = averagePace(week);
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black" edges={['top', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>
       <KeyboardAware>
-        <ScrollView contentContainerClassName="gap-6 p-4" keyboardShouldPersistTaps="handled">
-          <Text className="text-3xl font-bold text-black dark:text-white" accessibilityRole="header">
-            Evolução
-          </Text>
+        <ScrollView contentContainerClassName="gap-5 p-4 pb-8" keyboardShouldPersistTaps="handled">
+          <ScreenHeader eyebrow={`Últimas ${WEEKS} semanas`} title="Evolução" />
 
           <RaceGoalCard unit={unit} />
           <PersonalRecordsCard unit={unit} />
           <TrainingPlan unit={unit} />
 
           {trends.activeWeeks === 0 ? (
-            <Text className="text-lg text-neutral-700 dark:text-neutral-300">
+            <Text className="text-lg text-muted dark:text-muted-dark">
               Registre treinos para ver sua evolução nas últimas {WEEKS} semanas.
             </Text>
           ) : (
             <>
-              <View className="gap-2">
-                <SectionHeader>{`Distância por semana (${unit})`}</SectionHeader>
+              <Card gap={2} title={`Distância por semana (${unit})`} icon="chart">
                 {/* Leitura da barra selecionada: o "tooltip" do toque. */}
                 <Text
                   accessibilityLiveRegion="polite"
-                  className="text-base font-semibold text-black dark:text-white"
+                  className="text-base font-semibold text-ink dark:text-ink-dark"
                   style={display}
                 >
                   {selected === WEEKS - 1 ? 'Esta semana' : `Semana de ${weekLabel(week.weekStart)}`}:{' '}
@@ -87,7 +63,7 @@ export function TrendsScreen() {
                   {weekPace !== null ? ` · ${paceIn(weekPace)}/${unit}` : ''}
                 </Text>
                 <WeeklyBarChart weeks={weeks} unit={unit} selected={selected} onSelect={setSelected} goalMeters={goalMeters} />
-              </View>
+              </Card>
 
               <View className={`${large ? 'flex-col' : 'flex-row flex-wrap'} gap-3`}>
                 <StatTile
@@ -114,18 +90,18 @@ export function TrendsScreen() {
               </View>
 
               <Disclosure showLabel="Ver como tabela" hideLabel="Ocultar tabela">
-                <View className="rounded-xl border-2 border-black dark:border-white">
+                <View className="rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
                   {[...weeks].reverse().map((w, i) => (
                     <View
                       key={w.weekStart}
                       accessible
                       accessibilityLabel={`Semana de ${weekLabel(w.weekStart)}: ${formatDistance(w.distanceMeters, unit)} ${unit}, ${w.count} ${w.count === 1 ? 'treino' : 'treinos'}`}
                       className={`flex-row flex-wrap justify-between gap-x-4 px-4 py-2 ${
-                        i > 0 ? 'border-t border-neutral-300 dark:border-neutral-700' : ''
+                        i > 0 ? 'border-t border-surface-2 dark:border-surface-2-dark' : ''
                       }`}
                     >
-                      <Text className="text-base text-black dark:text-white">{weekLabel(w.weekStart)}</Text>
-                      <Text className="text-base font-semibold text-black dark:text-white" style={display}>
+                      <Text className="text-base text-ink dark:text-ink-dark">{weekLabel(w.weekStart)}</Text>
+                      <Text className="text-base font-semibold text-ink dark:text-ink-dark" style={display}>
                         {formatDistance(w.distanceMeters, unit)} {unit} · {w.count} {w.count === 1 ? 'treino' : 'treinos'}
                       </Text>
                     </View>

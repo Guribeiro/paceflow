@@ -22,7 +22,6 @@ import { ButtonRow } from './ui/ButtonRow';
 import { Card } from './ui/Card';
 import { confirmDestructive } from './ui/confirm';
 import { Disclosure } from './ui/Disclosure';
-import { SectionHeader } from './ui/SectionHeader';
 import { tabular } from './ui/typography';
 
 const OTHER = 'other';
@@ -123,14 +122,9 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
   const workouts = useWorkouts();
   const [editing, setEditing] = useState(false);
 
-  const header = (
-    <SectionHeader>Rumo à prova</SectionHeader>
-  );
-
   if (editing) {
     return (
-      <Card>
-        {header}
+      <Card title="Rumo à prova" icon="flag">
         <RaceGoalForm
           initial={goal}
           onCancel={() => setEditing(false)}
@@ -145,9 +139,8 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
 
   if (!goal) {
     return (
-      <Card>
-        {header}
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+      <Card title="Rumo à prova" icon="flag">
+        <Text className="text-base text-muted dark:text-muted-dark">
           Defina uma prova para ver a contagem regressiva, o pace-alvo e quanto falta pela sua forma atual.
         </Text>
         <Button label="Definir prova-alvo" onPress={() => setEditing(true)} />
@@ -186,17 +179,16 @@ export function RaceGoalCard({ unit }: { unit: DistanceUnit }) {
   }
 
   return (
-    <Card>
-      {header}
+    <Card title="Rumo à prova" icon="flag">
       <View accessible className="gap-1">
-        <Text className="text-xl font-bold text-black dark:text-white">{raceLabel(goal.distanceKm)}</Text>
-        <Text className="text-base font-semibold text-black dark:text-white">{countdown}</Text>
+        <Text className="text-xl font-bold text-ink dark:text-ink-dark">{raceLabel(goal.distanceKm)}</Text>
+        <Text className="text-base font-semibold text-ink dark:text-ink-dark">{countdown}</Text>
         {goal.targetSeconds && summary.targetSecondsPerKm ? (
-          <Text className="text-base text-black dark:text-white" style={tabular}>
+          <Text className="text-base text-ink dark:text-ink-dark" style={tabular}>
             Meta: {formatDuration(goal.targetSeconds)} · {formatDuration(perUnit(summary.targetSecondsPerKm))}/{unit}
           </Text>
         ) : null}
-        <Text className="text-base text-neutral-700 dark:text-neutral-300" style={tabular}>
+        <Text className="text-base text-muted dark:text-muted-dark" style={tabular}>
           {projection}
         </Text>
       </View>

@@ -7,7 +7,6 @@ import { useAccountEmail, useLastSync } from '../hooks/useAccount';
 import { Field } from './Field';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
-import { SectionHeader } from './ui/SectionHeader';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -51,7 +50,7 @@ function SignInForm() {
   if (step === 'email') {
     return (
       <View className="gap-3">
-        <Text className="text-base text-neutral-700 dark:text-neutral-300">
+        <Text className="text-base text-muted dark:text-muted-dark">
           Opcional: entre com seu e-mail para guardar os treinos na nuvem e usá-los em outros aparelhos.
         </Text>
         <Field
@@ -78,7 +77,7 @@ function SignInForm() {
 
   return (
     <View className="gap-3">
-      <Text className="text-base text-neutral-700 dark:text-neutral-300">
+      <Text className="text-base text-muted dark:text-muted-dark">
         Enviamos um código de 6 dígitos para {trimmedEmail}.
       </Text>
       <Field
@@ -123,12 +122,12 @@ function SignedIn({ email }: { email: string }) {
 
   return (
     <View className="gap-3">
-      <Text className="text-base text-neutral-800 dark:text-neutral-200">
+      <Text className="text-base text-ink dark:text-ink-dark">
         Conectado como <Text className="font-bold">{email}</Text>
       </Text>
       <Text
         accessibilityLiveRegion="polite"
-        className={`text-base font-semibold ${failed ? 'text-red-700 dark:text-red-400' : 'text-neutral-700 dark:text-neutral-300'}`}
+        className={`text-base font-semibold ${failed ? 'text-red-700 dark:text-red-400' : 'text-muted dark:text-muted-dark'}`}
       >
         {describeLastSync(lastSync)}
       </Text>
@@ -144,8 +143,7 @@ export function AccountSection() {
   if (!isCloudConfigured || email === undefined) return null;
 
   return (
-    <Card>
-      <SectionHeader>Conta e backup na nuvem</SectionHeader>
+    <Card title="Conta e backup na nuvem" icon="person">
       {email ? <SignedIn email={email} /> : <SignInForm />}
     </Card>
   );
