@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
+import { addUserInteractionListener } from 'expo-widgets';
 
 import {
   type RunSample,
@@ -11,6 +12,7 @@ import {
 } from '../domain/run-tracker';
 import { createFlagRepository } from './repositories/flag-repository';
 import { createRunRepository } from './repositories/run-repository';
+import { syncRunNotification } from './run-notification';
 import { announceAutoPause, announceSplit } from './run-voice';
 import { storage } from './storage/mmkv';
 
@@ -39,6 +41,15 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RUN_TASK, async
   runRepository.set(next);
   announceAutoPause(state, next);
   announceSplit(state, next);
+  void syncRunNotification(next);
+});
+
+// Botão Pausar/Retomar da notificação da corrida (escopo global, como a tarefa:
+// precisa ouvir com o app em segundo plano).
+addUserInteractionListener((event) => {
+  if (event.source !== 'RunNotification') return;
+  if (event.target === 'pause') pauseRunSession();
+  else if (event.target === 'resume') resumeRunSession();
 });
 
 export type StartResult = 'started' | 'denied' | 'blocked' | 'gps-off';
@@ -84,28 +95,40 @@ export async function startRunSession(
     runRepository.set(null);
     throw e;
   }
+  void syncRunNotification(runRepository.get(), now());
   return 'started';
 }
 
 export function pauseRunSession(now: number = Date.now()) {
   const state = runRepository.get();
-  if (state) runRepository.set(pauseRun(state, now));
+  if (!state) return;
+  const next = pauseRun(state, now);
+  runRepository.set(next);
+  void syncRunNotification(next, now);
 }
 
 export function resumeRunSession(now: number = Date.now()) {
   const state = runRepository.get();
-  if (state) runRepository.set(resumeRun(state, now));
+  if (!state) return;
+  const next = resumeRun(state, now);
+  runRepository.set(next);
+  void syncRunNotification(next, now);
 }
 
 export async function finishRunSession(now: number = Date.now()) {
   const state = runRepository.get();
-  if (state) runRepository.set(finishRun(state, now));
+  if (state) {
+    const next = finishRun(state, now);
+    runRepository.set(next);
+    void syncRunNotification(next, now);
+  }
   await stopUpdates();
 }
 
 /** Descarta a corrida (ou limpa depois de salvar no diário). */
 export async function discardRunSession() {
   runRepository.set(null);
+  void syncRunNotification(null);
   await stopUpdates();
 }
 
@@ -115,6 +138,7 @@ export async function discardRunSession() {
  */
 export async function ensureRunUpdates() {
   const state = runRepository.get();
+  void syncRunNotification(state);
   if (!state || state.status === 'finished') return;
   if (!(await Location.hasStartedLocationUpdatesAsync(RUN_TASK))) await startUpdates();
 }

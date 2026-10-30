@@ -257,12 +257,14 @@ describe('simplifyRoute (Douglas–Peucker por importância)', () => {
     expect(simplifyRoute([[at(0)]], UNLIMITED)).toEqual([[round5(at(0))]]);
   });
 
-  it('simplifica um zigue-zague de 2000 pontos em menos de 1 s', () => {
+  // Folga grande para a suíte em paralelo com a máquina ocupada: leva ~40 ms
+  // sozinho, e o algoritmo antigo levava dezenas de segundos.
+  it('simplifica um zigue-zague de 2000 pontos em menos de 5 s', () => {
     const points = zigzag(2000);
     const started = performance.now();
     const result = simplifyRoute([points]);
     const elapsed = performance.now() - started;
-    expect(elapsed).toBeLessThan(1000);
+    expect(elapsed).toBeLessThan(5000);
     expect(routePointCount(result)).toBe(500);
   });
 });

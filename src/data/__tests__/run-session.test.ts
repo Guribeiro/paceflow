@@ -15,9 +15,11 @@ import {
   startRunSession,
 } from '../run-session';
 import { storage } from '../storage/mmkv';
+import { syncRunNotification } from '../run-notification';
 import { voicePreferences } from '../run-voice';
 
 jest.mock('expo-speech');
+jest.mock('../run-notification', () => ({ syncRunNotification: jest.fn(() => Promise.resolve()) }));
 
 // O mock do expo-task-manager (jest.setup.ts) executa a tarefa definida no import de run-session.
 const { __runTask: runTask } = jest.requireMock<{ __runTask: (name: string, body: unknown) => Promise<void> }>(
@@ -323,5 +325,60 @@ describe('ensureRunUpdates', () => {
     location.startLocationUpdatesAsync.mockClear();
     await ensureRunUpdates();
     expect(location.startLocationUpdatesAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('notificação da corrida', () => {
+  const sync = jest.mocked(syncRunNotification);
+  const { __emitUserInteraction: press } = jest.requireMock<{
+    __emitUserInteraction: (interaction: { source: string; target: string }) => void;
+  }>('expo-widgets');
+
+  it('sincroniza a notificação ao começar e depois de cada lote do GPS', async () => {
+    await startRunSession(1000, false, false, () => T0);
+    expect(sync).toHaveBeenCalledWith(runRepository.get(), T0);
+
+    sync.mockClear();
+    await runTask(RUN_TASK, { data: { locations: [fix(0, 0), fix(30, 10)] }, error: null });
+    expect(sync).toHaveBeenCalledTimes(1);
+    expect(sync).toHaveBeenCalledWith(runRepository.get());
+  });
+
+  it('sincroniza ao pausar, retomar e finalizar', async () => {
+    await startRunSession(1000, false, false, () => T0);
+    sync.mockClear();
+
+    pauseRunSession(T0 + 30_000);
+    expect(sync).toHaveBeenLastCalledWith(runRepository.get(), T0 + 30_000);
+    resumeRunSession(T0 + 60_000);
+    expect(sync).toHaveBeenLastCalledWith(runRepository.get(), T0 + 60_000);
+    await finishRunSession(T0 + 90_000);
+    expect(sync).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'finished' }), T0 + 90_000);
+  });
+
+  it('cancela a notificação ao descartar a corrida', async () => {
+    await startRunSession(1000, false, false, () => T0);
+    sync.mockClear();
+    await discardRunSession();
+    expect(sync).toHaveBeenCalledWith(null);
+  });
+
+  it('o botão Pausar da notificação pausa a corrida, e o Retomar a retoma', async () => {
+    await startRunSession(1000, false, false, () => T0);
+
+    press({ source: 'RunNotification', target: 'pause' });
+    expect(runRepository.get()?.status).toBe('paused');
+
+    press({ source: 'RunNotification', target: 'resume' });
+    expect(runRepository.get()?.status).toBe('running');
+  });
+
+  it('ignora toques de outra notificação ou em outro botão', async () => {
+    await startRunSession(1000, false, false, () => T0);
+    const state = runRepository.get();
+
+    press({ source: 'WeekWidget', target: 'pause' });
+    press({ source: 'RunNotification', target: 'finish' });
+    expect(runRepository.get()).toBe(state);
   });
 });

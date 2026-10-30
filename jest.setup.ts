@@ -25,7 +25,7 @@ jest.mock('expo-crypto', () => ({
 jest.mock('expo-notifications', () => {
   const scheduled = new Map<string, { identifier: string; content: unknown; trigger: unknown }>();
   return {
-    AndroidImportance: { DEFAULT: 3 },
+    AndroidImportance: { MIN: 1, LOW: 2, DEFAULT: 3 },
     SchedulableTriggerInputTypes: { DATE: 'date' },
     setNotificationHandler: jest.fn(),
     setNotificationChannelAsync: jest.fn(() => Promise.resolve(null)),
@@ -42,6 +42,29 @@ jest.mock('expo-notifications', () => {
       scheduled.delete(identifier);
       return Promise.resolve();
     }),
+  };
+});
+
+// expo-widgets sem o módulo nativo: notificações personalizadas guardam o que
+// foi postado, e `__emitUserInteraction(evento)` simula um botão tocado.
+type MockInteraction = { source: string; target: string; notificationId?: string };
+type MockInteractionListener = (interaction: MockInteraction) => void;
+jest.mock('expo-widgets', () => {
+  const listeners = new Set<MockInteractionListener>();
+  return {
+    createWidget: jest.fn(() => ({ updateSnapshot: jest.fn() })),
+    createCustomNotification: jest.fn((name: string) => ({
+      name,
+      post: jest.fn(() => Promise.resolve({})),
+      cancelAll: jest.fn(() => Promise.resolve()),
+      get: jest.fn(() => Promise.resolve(null)),
+      getActive: jest.fn(() => Promise.resolve([])),
+    })),
+    addUserInteractionListener: jest.fn((listener: MockInteractionListener) => {
+      listeners.add(listener);
+      return { remove: () => listeners.delete(listener) };
+    }),
+    __emitUserInteraction: (interaction: MockInteraction) => listeners.forEach((listener) => listener(interaction)),
   };
 });
 
