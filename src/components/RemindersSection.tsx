@@ -13,18 +13,18 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Toggle } from './ui/Toggle';
 
-type Kind = 'training' | 'weeklyGoal' | 'race';
+type Kind = 'training' | 'weeklyGoal' | 'race' | 'streak';
 
 const TIME_OPTIONS = ['06:00', '07:00', '18:00'].map((t) => ({ value: t, label: t, spoken: `Às ${t}` }));
 
-/** Lembretes locais deste aparelho: dias de treino, meta da semana e prova. */
+/** Lembretes locais deste aparelho: dias de treino, meta da semana, sequência e prova. */
 export function RemindersSection() {
   const [prefs, update] = useReminderPreferences();
   const [weeklyGoal] = useWeeklyGoal();
   const [raceGoal] = useRaceGoal();
   const [blocked, setBlocked] = useState(false);
   const [timeText, setTimeText] = useState('');
-  const anyOn = prefs.training || prefs.weeklyGoal || prefs.race;
+  const anyOn = prefs.training || prefs.weeklyGoal || prefs.race || prefs.streak;
   const parsedTime = parseTime(timeText);
 
   // Confere de novo ao voltar das configurações do sistema.
@@ -111,6 +111,13 @@ export function RemindersSection() {
         }
         value={prefs.weeklyGoal}
         onChange={(on) => void toggle('weeklyGoal', on)}
+      />
+
+      <Toggle
+        label="Sequência em risco"
+        description="Domingo às 18h, se a semana ainda não contou para a sequência."
+        value={prefs.streak}
+        onChange={(on) => void toggle('streak', on)}
       />
 
       <Toggle

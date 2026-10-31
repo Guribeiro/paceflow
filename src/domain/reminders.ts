@@ -1,5 +1,7 @@
+import { type GoalHistory, goalForWeek } from './goal-history';
 import { type DistanceUnit, distanceInUnit } from './pace/units';
 import type { RaceGoal } from './race-goal';
+import { streakLabel, weeklyStreak } from './streak';
 import { type KeySession, buildTrainingPlan, raceName } from './training-plan';
 import { goalProgress } from './weekly-goal';
 import type { Workout } from './workout';
@@ -14,6 +16,7 @@ export interface ReminderPreferences {
   time: string;
   weeklyGoal: boolean;
   race: boolean;
+  streak: boolean;
 }
 
 export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
@@ -22,6 +25,7 @@ export const DEFAULT_REMINDER_PREFERENCES: ReminderPreferences = {
   time: '07:00',
   weeklyGoal: false,
   race: false,
+  streak: false,
 };
 
 export interface Reminder {
@@ -37,11 +41,13 @@ export interface ReminderContext {
   unit: DistanceUnit;
   weeklyGoalMeters: number | null;
   raceGoal: RaceGoal | null;
+  goalHistory?: GoalHistory;
 }
 
 /** Lembretes de treino cobrem só os próximos dias; o app reagenda ao abrir. */
 const HORIZON_DAYS = 14;
 const GOAL_REMINDER = { weekday: 5, hour: 9 }; // sábado, a partir da segunda
+const STREAK_REMINDER = { weekday: 6, hour: 18 }; // domingo, a partir da segunda
 const RACE_REMINDER_HOUR = 19;
 const RACE_OFFSETS = [7, 1];
 
@@ -63,6 +69,8 @@ export function parseReminderPreferences(value: unknown): ReminderPreferences | 
   const daysOk = days !== null && days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6);
   const time = typeof p.time === 'string' ? parseTime(p.time) : null;
   if (typeof p.training !== 'boolean' || typeof p.weeklyGoal !== 'boolean' || typeof p.race !== 'boolean') return null;
+  // Ausente em preferências gravadas antes do lembrete da sequência.
+  if (p.streak !== undefined && typeof p.streak !== 'boolean') return null;
   if (!daysOk || time === null) return null;
   return {
     training: p.training,
@@ -70,6 +78,7 @@ export function parseReminderPreferences(value: unknown): ReminderPreferences | 
     time,
     weeklyGoal: p.weeklyGoal,
     race: p.race,
+    streak: p.streak ?? false,
   };
 }
 
@@ -156,6 +165,29 @@ function weeklyGoalReminder(ctx: ReminderContext, now: Date): Reminder[] {
   ];
 }
 
+function streakReminder(ctx: ReminderContext, now: Date): Reminder[] {
+  const sunday = addDays(startOfWeek(now), STREAK_REMINDER.weekday);
+  const date = at(sunday, STREAK_REMINDER.hour);
+  const streak = weeklyStreak(
+    ctx.workouts,
+    (week) => goalForWeek(ctx.goalHistory ?? [], week, ctx.weeklyGoalMeters),
+    now,
+  );
+  if (date <= now || !streak.atRisk) return [];
+  const remaining =
+    streak.remainingMeters === null
+      ? 'Uma corrida mantém a sequência.'
+      : `Faltam ${String(Number(distanceInUnit(streak.remainingMeters, ctx.unit).toFixed(1))).replace('.', ',')} ${ctx.unit} para mantê-la.`;
+  return [
+    {
+      id: `sequencia:${dateKey(sunday)}`,
+      date,
+      title: 'Sequência em risco',
+      body: `Sua sequência de ${streakLabel(streak.current)} termina hoje. ${remaining}`,
+    },
+  ];
+}
+
 function raceReminders(goal: RaceGoal, now: Date): Reminder[] {
   const [y, m, d] = goal.date.split('-').map(Number);
   const race = new Date(y, m - 1, d);
@@ -184,6 +216,7 @@ export function planReminders(prefs: ReminderPreferences, ctx: ReminderContext, 
     ...(prefs.training ? trainingReminders(prefs, ctx, now) : []),
     ...(prefs.weeklyGoal ? weeklyGoalReminder(ctx, now) : []),
     ...(prefs.race && ctx.raceGoal ? raceReminders(ctx.raceGoal, now) : []),
+    ...(prefs.streak ? streakReminder(ctx, now) : []),
   ];
   return reminders.sort((a, b) => a.date.getTime() - b.date.getTime());
 }

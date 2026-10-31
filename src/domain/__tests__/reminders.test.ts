@@ -61,6 +61,13 @@ describe('parseReminderPreferences', () => {
     expect(parseReminderPreferences({ ...DEFAULT_REMINDER_PREFERENCES, trainingDays: [7] })).toBeNull();
     expect(parseReminderPreferences({ ...DEFAULT_REMINDER_PREFERENCES, time: '25:00' })).toBeNull();
     expect(parseReminderPreferences({ ...DEFAULT_REMINDER_PREFERENCES, race: 'sim' })).toBeNull();
+    expect(parseReminderPreferences({ ...DEFAULT_REMINDER_PREFERENCES, streak: 'sim' })).toBeNull();
+  });
+
+  it('preferências gravadas antes da sequência continuam válidas, com ela desligada', () => {
+    const { streak: _streak, ...old } = { ...DEFAULT_REMINDER_PREFERENCES, training: true, trainingDays: [1] };
+    expect(parseReminderPreferences(old)).toEqual({ ...old, streak: false });
+    expect(parseReminderPreferences({ ...old, streak: true })?.streak).toBe(true);
   });
 });
 
@@ -161,6 +168,61 @@ describe('planReminders', () => {
     expect(ids(planReminders(prefs({ race: true }), ctx({ raceGoal }), NOW))).toEqual(['prova:1:2026-11-08']);
     expect(planReminders(prefs({ race: true }), ctx({ raceGoal: { distanceKm: 5, date: '2026-10-01' } }), NOW)).toEqual([]);
     expect(planReminders(prefs({ race: true }), ctx(), NOW)).toEqual([]);
+  });
+
+  describe('sequência', () => {
+    const on = prefs({ streak: true });
+    // Semanas de 19/10 e 26/10 com treino; a atual (02/11) ainda sem nada.
+    const twoWeeks = [workout(new Date(2026, 9, 21, 7), 5_000), workout(new Date(2026, 9, 28, 7), 5_000)];
+
+    it('em risco: domingo às 18h, e sem meta basta uma corrida', () => {
+      expect(planReminders(on, ctx({ workouts: twoWeeks }), NOW)).toEqual([
+        {
+          id: 'sequencia:2026-11-08',
+          date: new Date(2026, 10, 8, 18),
+          title: 'Sequência em risco',
+          body: 'Sua sequência de 2 semanas termina hoje. Uma corrida mantém a sequência.',
+        },
+      ]);
+    });
+
+    it('com meta, diz quanto falta na unidade preferida', () => {
+      const workouts = [workout(new Date(2026, 9, 28, 7), 20_000), workout(new Date(2026, 10, 2, 7), 12_500)];
+      expect(planReminders(on, ctx({ weeklyGoalMeters: 20_000, workouts }), NOW)[0].body).toBe(
+        'Sua sequência de 1 semana termina hoje. Faltam 7,5 km para mantê-la.',
+      );
+      expect(planReminders(on, ctx({ weeklyGoalMeters: 20_000, workouts, unit: 'mi' }), NOW)[0].body).toBe(
+        'Sua sequência de 1 semana termina hoje. Faltam 4,7 mi para mantê-la.',
+      );
+    });
+
+    it('usa a meta que valia em cada semana', () => {
+      // 12 km bastavam na semana de 26/10 (meta 10 km); a meta atual (20 km) não vale para trás.
+      const workouts = [workout(new Date(2026, 9, 28, 7), 12_000)];
+      const goalHistory = [
+        { week: '0000-01-01', meters: 10_000 },
+        { week: '2026-11-02', meters: 20_000 },
+      ];
+      expect(ids(planReminders(on, ctx({ weeklyGoalMeters: 20_000, workouts, goalHistory }), NOW))).toEqual([
+        'sequencia:2026-11-08',
+      ]);
+      expect(planReminders(on, ctx({ weeklyGoalMeters: 20_000, workouts }), NOW)).toEqual([]);
+    });
+
+    it('nada sem risco: semana garantida, sem sequência ou lembrete desligado', () => {
+      const done = [...twoWeeks, workout(new Date(2026, 10, 3, 7), 5_000)];
+      expect(planReminders(on, ctx({ workouts: done }), NOW)).toEqual([]);
+      expect(planReminders(on, ctx(), NOW)).toEqual([]);
+      expect(planReminders(prefs({ streak: false }), ctx({ workouts: twoWeeks }), NOW)).toEqual([]);
+    });
+
+    it('domingo: até antes das 18h ainda lembra; das 18h em diante, não', () => {
+      expect(ids(planReminders(on, ctx({ workouts: twoWeeks }), new Date(2026, 10, 8, 17, 59)))).toEqual([
+        'sequencia:2026-11-08',
+      ]);
+      expect(planReminders(on, ctx({ workouts: twoWeeks }), new Date(2026, 10, 8, 18))).toEqual([]);
+      expect(planReminders(on, ctx({ workouts: twoWeeks }), new Date(2026, 10, 8, 21))).toEqual([]);
+    });
   });
 
   it('junta os tipos em ordem de data', () => {

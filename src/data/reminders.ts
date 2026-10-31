@@ -100,6 +100,7 @@ export function syncReminders(now: () => Date = () => new Date()): Promise<void>
             unit: preferencesRepository.getUnit(),
             weeklyGoalMeters: preferencesRepository.getWeeklyGoal(),
             raceGoal: preferencesRepository.getRaceGoal(),
+            goalHistory: preferencesRepository.getGoalHistory(),
           },
           now(),
         );

@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 import type { Reminder } from '../../domain/reminders';
 import { preferencesRepository } from '../preferences';
 import { applyReminders, reminderPreferences, requestReminderPermission, syncReminders } from '../reminders';
+import { storage } from '../storage/mmkv';
+import { workoutRepository } from '../workouts';
 
 const mocked = jest.mocked(Notifications);
 
@@ -80,6 +82,35 @@ describe('syncReminders', () => {
     mocked.getPermissionsAsync.mockResolvedValueOnce({ granted: false, canAskAgain: true } as never);
     await syncReminders(() => new Date(2026, 10, 4, 10));
     expect(await scheduledIds()).toEqual([]);
+  });
+
+  it('a sequência usa o histórico da meta gravado no aparelho', async () => {
+    // Meta de 10 km até a semana passada e 20 km a partir desta (02/11).
+    storage.set('prefs:v1:weeklyGoal', '20000');
+    storage.set(
+      'prefs:v1:weeklyGoalHistory',
+      JSON.stringify([
+        { week: '0000-01-01', meters: 10000 },
+        { week: '2026-11-02', meters: 20000 },
+      ]),
+    );
+    const created = workoutRepository.create({
+      date: new Date(2026, 9, 28, 7).toISOString(),
+      distanceMeters: 12000, // basta para os 10 km da época, não para os 20 de hoje
+      durationSeconds: 3600,
+      terrain: 'rua',
+    });
+    if (!created.ok) throw new Error(created.error);
+    reminderPreferences.update({ streak: true });
+    try {
+      await syncReminders(() => new Date(2026, 10, 4, 10));
+      expect(await scheduledIds()).toEqual(['paceflow:sequencia:2026-11-08']);
+    } finally {
+      reminderPreferences.update({ streak: false });
+      workoutRepository.remove(created.value.id);
+      storage.remove('prefs:v1:weeklyGoal');
+      storage.remove('prefs:v1:weeklyGoalHistory');
+    }
   });
 
   it('chamadas seguidas viram uma rodada extra, não várias', async () => {
