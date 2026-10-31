@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useState, useSyncExternalStore } from 'react';
 import { Linking, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ChoiceChips } from '../components/ChoiceChips';
+import { IntervalPlanForm } from '../components/IntervalPlanForm';
 import { KeyboardAware } from '../components/KeyboardAware';
 import { RouteMap } from '../components/RouteMap';
 import { SaveWorkoutForm } from '../components/SaveWorkoutForm';
@@ -20,12 +23,24 @@ import {
   type StartResult,
   discardRunSession,
   finishRunSession,
+  intervalPlanRepository,
   pauseRunSession,
   resumeRunSession,
+  skipPhaseSession,
   startRunSession,
 } from '../data/run-session';
+import { type IntervalPlan, type PhaseKind, parseMeasure } from '../domain/interval-plan';
+import { seriesNote } from '../domain/interval-results';
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration, spokenDuration } from '../domain/pace';
-import { type RunState, currentPace, elapsedMs, isAutoPaused, splitDurations } from '../domain/run-tracker';
+import {
+  type PhaseResult,
+  type RunState,
+  currentPace,
+  elapsedMs,
+  isAutoPaused,
+  phaseProgress,
+  splitDurations,
+} from '../domain/run-tracker';
 import { routePointCount } from '../domain/route';
 import { splitUnit } from '../domain/workout';
 import { useAutoPause } from '../hooks/useAutoPause';
@@ -37,6 +52,24 @@ const SPLIT_METERS: Record<DistanceUnit, number> = { km: 1000, mi: KM_PER_MILE *
 /** Abaixo disso não há treino para registrar (ex.: começou e parou no lugar). */
 const MIN_SAVE_METERS = 10;
 
+type Mode = 'free' | 'intervals';
+
+const MODE_OPTIONS: { value: Mode; label: string }[] = [
+  { value: 'free', label: 'Corrida livre' },
+  { value: 'intervals', label: 'Intervalado' },
+];
+
+/** Plano inicial: o último usado, com o tiro e o pace-alvo vindos da calculadora (rep em metros, alvo em s/km). */
+function planFromParams(base: IntervalPlan, params: { rep?: string; alvo?: string }): IntervalPlan {
+  const work = params.rep ? parseMeasure({ kind: 'distance', meters: Number(params.rep) }) : null;
+  const target = Number(params.alvo);
+  return {
+    ...base,
+    work: work ?? base.work,
+    targetSecondsPerKm: params.alvo && Number.isFinite(target) && target > 0 ? target : base.targetSecondsPerKm,
+  };
+}
+
 const START_ERRORS: Record<Exclude<StartResult, 'started'>, string> = {
   denied: 'O PaceFlow precisa da localização para medir a corrida. Toque em Começar e permita o acesso.',
   blocked: 'A localização do PaceFlow está bloqueada. Ative em Configurações › Apps › PaceFlow › Permissões.',
@@ -47,6 +80,63 @@ const START_ERRORS: Record<Exclude<StartResult, 'started'>, string> = {
 const roundSplit = (seconds: number) => Math.round(seconds * 10) / 10;
 
 const perUnit = (secondsPerKm: number, unit: DistanceUnit) => (unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
+
+const PHASE_NAMES: Record<PhaseKind, string> = {
+  warmup: 'Aquecimento',
+  work: 'Tiro',
+  recovery: 'Recuperação',
+  cooldown: 'Desaquecimento',
+};
+
+/** Fase atual do intervalado e quanto falta; "Treino concluído" depois da última. */
+function PhaseTile({ run, now }: { run: RunState; now: number }) {
+  const progress = phaseProgress(run, now);
+  if (!progress) {
+    return (
+      <Card variant="soft" gap={0}>
+        <Text accessibilityLiveRegion="polite" className="text-lg font-bold text-brand-ink dark:text-brand-ink-dark">
+          ✓ Treino concluído. Finalize quando quiser.
+        </Text>
+      </Card>
+    );
+  }
+  const { phase, remaining } = progress;
+  const reps = run.intervals!.plan.reps;
+  const name = phase.kind === 'work' ? `Tiro ${phase.rep}/${reps}` : PHASE_NAMES[phase.kind];
+  const distance = phase.measure.kind === 'distance';
+  const value = distance ? `${Math.ceil(remaining)} m` : formatDuration(Math.ceil(remaining));
+  return (
+    <StatTile
+      variant="hero"
+      size="lg"
+      label={name}
+      value={value}
+      detail={distance ? 'faltam' : 'restante'}
+      spoken={distance ? `${Math.ceil(remaining)} metros` : spokenDuration(Math.ceil(remaining))}
+      className=""
+    />
+  );
+}
+
+/** Tempo, distância e pace de cada tiro, no fim do intervalado. */
+function RepList({ results, unit }: { results: PhaseResult[]; unit: DistanceUnit }) {
+  const reps = results.filter((r) => r.kind === 'work');
+  return (
+    <Card gap={2} title="Tiros" icon="timer">
+      {reps.map((r) => {
+        const seconds = Math.round(r.ms / 1000);
+        const pace = r.meters >= 1 ? formatDuration(Math.round(perUnit(r.ms / 1000 / (r.meters / 1000), unit))) : null;
+        return (
+          <Text key={r.rep} className="text-base text-ink dark:text-ink-dark" style={tabular}>
+            <Text className="font-bold">Tiro {r.rep}</Text>: {formatDuration(seconds)} · {Math.round(r.meters)} m
+            {pace ? ` · ${pace}/${unit}` : ''}
+            {r.skipped ? ' (pulado)' : ''}
+          </Text>
+        );
+      })}
+    </Card>
+  );
+}
 
 function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: DistanceUnit }) {
   const seconds = Math.floor(elapsedMs(run, now) / 1000);
@@ -66,8 +156,9 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
           {paused ? '⏸ Pausada' : '⏸ Pausa automática'}
         </Text>
       ) : null}
+      {run.intervals ? <PhaseTile run={run} now={now} /> : null}
       <StatTile
-        variant="hero"
+        variant={run.intervals ? 'surface' : 'hero'}
         size="lg"
         label="Tempo"
         value={formatDuration(seconds)}
@@ -105,6 +196,11 @@ function ActiveRun({ run, now, unit }: { run: RunState; now: number; unit: Dista
         <ButtonRow>
           <Button label="Retomar" size="lg" grow onPress={() => resumeRunSession()} />
           <Button label="Finalizar" variant="secondary" size="lg" grow onPress={() => void finishRunSession()} />
+        </ButtonRow>
+      ) : run.intervals && phaseProgress(run, now) ? (
+        <ButtonRow>
+          <Button label="Pausar" size="lg" grow onPress={() => pauseRunSession()} />
+          <Button label="Pular fase" variant="secondary" size="lg" grow onPress={() => skipPhaseSession()} />
         </ButtonRow>
       ) : (
         <Button label="Pausar" size="lg" onPress={() => pauseRunSession()} />
@@ -165,6 +261,9 @@ function FinishedRun({
           <RouteMap route={run.route} />
         </Card>
       ) : null}
+      {run.intervals && run.intervals.results.some((r) => r.kind === 'work') ? (
+        <RepList results={run.intervals.results} unit={unit} />
+      ) : null}
       {splits.length > 0 ? (
         <Card gap={0} title="Parciais" icon="flag">
           <SplitList splits={splits} unit={splitUnit(run.splitMeters)} />
@@ -176,6 +275,7 @@ function FinishedRun({
           distanceKm={km}
           durationSeconds={seconds}
           initialTerrain="rua"
+          initialNote={run.intervals ? (seriesNote(run.intervals, unit) ?? undefined) : undefined}
           splits={splits.length > 0 ? { splits: splits.map(roundSplit), splitMeters: run.splitMeters } : undefined}
           route={run.route}
           onSaved={onSaved}
@@ -210,13 +310,34 @@ export function RunScreen() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [saved, setSaved] = useState<{ celebration: { text: string; spoken: string } | null } | null>(null);
+  const params = useLocalSearchParams<{ rep?: string; alvo?: string; envio?: string }>();
+  const lastPlan = useSyncExternalStore(intervalPlanRepository.subscribe, intervalPlanRepository.get);
+  const [mode, setMode] = useState<Mode>(params.rep || params.alvo ? 'intervals' : 'free');
+  const [plan, setPlan] = useState<IntervalPlan>(() => planFromParams(lastPlan, params));
+  // A aba pode já estar montada quando a calculadora manda um treino novo:
+  // estado derivado dos parâmetros (setState no render, padrão do React).
+  const paramsKey = `${params.rep ?? ''}|${params.alvo ?? ''}|${params.envio ?? ''}`;
+  const [seenParams, setSeenParams] = useState(paramsKey);
+  if (paramsKey !== seenParams) {
+    setSeenParams(paramsKey);
+    if (params.rep || params.alvo) {
+      setMode('intervals');
+      setPlan(planFromParams(plan, params));
+    }
+  }
 
   async function start() {
     setStarting(true);
     setError(null);
     setSaved(null);
     try {
-      const result = await startRunSession(SPLIT_METERS[unit], autoPause, keepRoute);
+      const result = await startRunSession(
+        SPLIT_METERS[unit],
+        autoPause,
+        keepRoute,
+        undefined,
+        mode === 'intervals' ? plan : null,
+      );
       if (result !== 'started') setError(START_ERRORS[result]);
     } catch {
       setError('Não foi possível iniciar o GPS. Tente de novo.');
@@ -268,6 +389,16 @@ export function RunScreen() {
                     <Button label="Abrir configurações" variant="link" onPress={() => void Linking.openSettings()} />
                   ) : null}
                 </Card>
+              ) : null}
+              <ChoiceChips
+                label="Tipo de corrida"
+                options={MODE_OPTIONS}
+                value={mode}
+                onChange={(value) => value && setMode(value)}
+              />
+              {mode === 'intervals' ? (
+                // key: um treino novo da calculadora recomeça os campos digitados.
+                <IntervalPlanForm key={`${seenParams}|${unit}`} plan={plan} onChange={setPlan} unit={unit} />
               ) : null}
               <Button label={saved ? 'Nova corrida' : 'Começar'} size="lg" busy={starting} onPress={() => void start()} />
             </View>
