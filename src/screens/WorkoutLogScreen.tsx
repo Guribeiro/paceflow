@@ -21,6 +21,7 @@ import { TERRAIN_LABELS, type Workout, splitUnit } from '../domain/workout';
 import { summarizeWeek } from '../domain/workout-summary';
 import { type Shoe, isActiveShoe } from '../domain/shoe';
 import { shoeMileage, shoeStatus } from '../domain/shoe-mileage';
+import { useCurrentWeek } from '../hooks/useCurrentWeek';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useHasRoute, useRoute } from '../hooks/useRoute';
 import { useShoes } from '../hooks/useShoes';
@@ -184,7 +185,10 @@ export function WorkoutLogScreen() {
   const [goalMeters] = useWeeklyGoal();
   const shoes = useShoes();
   const shoeNames = useMemo(() => new Map(shoes.map((s) => [s.id, s.name])), [shoes]);
-  const summary = useMemo(() => summarizeWeek(workouts), [workouts]);
+  const currentWeek = useCurrentWeek();
+  // currentWeek: recalcula na virada da semana.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const summary = useMemo(() => summarizeWeek(workouts), [workouts, currentWeek]);
 
   return (
     <SafeAreaView className="flex-1 bg-canvas dark:bg-canvas-dark" edges={['top', 'left', 'right']}>

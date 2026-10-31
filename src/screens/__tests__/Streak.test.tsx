@@ -77,6 +77,50 @@ describe('Sequência no Diário', () => {
   });
 });
 
+describe('Virada da semana com o app aberto', () => {
+  // Domingo, 08/11/2026, 23:59:30 (horário local). Fake timers só aqui: o
+  // relógio precisa andar até segunda sem mudar os treinos.
+  const SUNDAY_NIGHT = new Date(2026, 10, 8, 23, 59, 30);
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: SUNDAY_NIGHT });
+    add(new Date(2026, 9, 28, 7)); // semana de 26/10
+    add(new Date(2026, 10, 4, 7), 8_000); // semana de 02/11
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  async function nextMinute() {
+    await act(async () => {
+      jest.advanceTimersByTime(60_000);
+    });
+  }
+
+  it('no Diário, a Sequência e "Esta semana" passam para a semana nova', async () => {
+    await render(<WorkoutLogScreen />);
+    expect(screen.getByLabelText('Sequência: 2 semanas. Melhor: 2 semanas. Semana garantida!')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Esta semana: 8,0 quilômetros, 1 treino,/)).toBeOnTheScreen();
+
+    await nextMinute();
+
+    expect(
+      screen.getByLabelText('Sequência: 2 semanas. Melhor: 2 semanas. Falta uma corrida para manter a sequência.'),
+    ).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Esta semana: 0,0 quilômetros, 0 treinos,/)).toBeOnTheScreen();
+  });
+
+  it('na Evolução, "Esta semana" passa a ser a semana nova', async () => {
+    await render(<TrendsScreen />);
+    expect(screen.getByText(/^Esta semana: 8,00 km · 1 treino/)).toBeOnTheScreen();
+
+    await nextMinute();
+
+    expect(screen.getByText('Esta semana: 0,00 km · 0 treinos')).toBeOnTheScreen();
+  });
+});
+
 describe('Sequência na Evolução', () => {
   it('mostra a sequência atual e a melhor', async () => {
     add(weeksAgo(5));

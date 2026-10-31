@@ -3,6 +3,7 @@ import { useMemo, useSyncExternalStore } from 'react';
 import { preferencesRepository } from '../data/preferences';
 import { goalForWeek } from '../domain/goal-history';
 import { type Streak, weeklyStreak } from '../domain/streak';
+import { useCurrentWeek } from './useCurrentWeek';
 import { useWeeklyGoal } from './useWeeklyGoal';
 import { useWorkouts } from './useWorkouts';
 
@@ -11,5 +12,11 @@ export function useStreak(): Streak {
   const workouts = useWorkouts();
   const [goal] = useWeeklyGoal();
   const history = useSyncExternalStore(preferencesRepository.subscribe, preferencesRepository.getGoalHistory);
-  return useMemo(() => weeklyStreak(workouts, (week) => goalForWeek(history, week, goal)), [workouts, history, goal]);
+  const currentWeek = useCurrentWeek();
+  return useMemo(
+    () => weeklyStreak(workouts, (week) => goalForWeek(history, week, goal)),
+    // currentWeek: recalcula na virada da semana.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [workouts, history, goal, currentWeek],
+  );
 }

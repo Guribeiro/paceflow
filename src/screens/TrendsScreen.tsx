@@ -10,6 +10,7 @@ import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
 import { streakLabel } from '../domain/streak';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
+import { useCurrentWeek } from '../hooks/useCurrentWeek';
 import { useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useStreak } from '../hooks/useStreak';
@@ -28,7 +29,10 @@ export function TrendsScreen() {
   const [unit] = usePreferredUnit();
   const [goalMeters] = useWeeklyGoal();
   const large = useLargeText();
-  const weeks = useMemo(() => weeklyTotals(workouts, new Date(), WEEKS), [workouts]);
+  const currentWeek = useCurrentWeek();
+  // currentWeek: recalcula na virada da semana.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const weeks = useMemo(() => weeklyTotals(workouts, new Date(), WEEKS), [workouts, currentWeek]);
   const trends = useMemo(() => summarizeTrends(weeks), [weeks]);
   const streak = useStreak();
   const [selected, setSelected] = useState(WEEKS - 1);
