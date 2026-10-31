@@ -2,18 +2,21 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { addUserInteractionListener } from 'expo-widgets';
 
+import type { IntervalPlan } from '../domain/interval-plan';
 import {
   type RunSample,
   applySamples,
   finishRun,
   pauseRun,
   resumeRun,
+  skipPhase,
   startRun,
 } from '../domain/run-tracker';
 import { createFlagRepository } from './repositories/flag-repository';
+import { createIntervalPlanRepository } from './repositories/interval-plan-repository';
 import { createRunRepository } from './repositories/run-repository';
 import { syncRunNotification } from './run-notification';
-import { announceAutoPause, announceSplit } from './run-voice';
+import { announceAutoPause, announceFirstPhase, announceIntervals, announceSplit } from './run-voice';
 import { storage } from './storage/mmkv';
 
 export const runRepository = createRunRepository(storage);
@@ -21,6 +24,8 @@ export const runRepository = createRunRepository(storage);
 export const autoPausePreference = createFlagRepository(storage, 'run-auto-pause:v1', true);
 /** Guardar o trajeto das próximas corridas (só no aparelho; ligado por padrão). */
 export const routePreference = createFlagRepository(storage, 'run-route:v1', true);
+/** Último treino intervalado montado (por aparelho). */
+export const intervalPlanRepository = createIntervalPlanRepository(storage);
 
 export const RUN_TASK = 'paceflow-run';
 
@@ -41,6 +46,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RUN_TASK, async
   runRepository.set(next);
   announceAutoPause(state, next);
   announceSplit(state, next);
+  announceIntervals(state, next);
   void syncRunNotification(next);
 });
 
@@ -77,25 +83,29 @@ async function stopUpdates() {
   }
 }
 
-/** Pede a localização "durante o uso" e começa a gravar. */
+/** Pede a localização "durante o uso" e começa a gravar; com plano, guia o intervalado. */
 export async function startRunSession(
   splitMeters: number,
   autoPause: boolean,
   keepRoute: boolean,
   now: () => number = Date.now,
+  plan: IntervalPlan | null = null,
 ): Promise<StartResult> {
   const permission = await Location.requestForegroundPermissionsAsync();
   if (!permission.granted) return permission.canAskAgain ? 'denied' : 'blocked';
   if (!(await Location.hasServicesEnabledAsync())) return 'gps-off';
 
-  runRepository.set(startRun(now(), splitMeters, autoPause, keepRoute));
+  if (plan) intervalPlanRepository.set(plan);
+  runRepository.set(startRun(now(), splitMeters, autoPause, keepRoute, plan));
   try {
     await startUpdates();
   } catch (e) {
     runRepository.set(null);
     throw e;
   }
-  void syncRunNotification(runRepository.get(), now());
+  const started = runRepository.get();
+  if (started) announceFirstPhase(started);
+  void syncRunNotification(started, now());
   return 'started';
 }
 
@@ -112,6 +122,16 @@ export function resumeRunSession(now: number = Date.now()) {
   if (!state) return;
   const next = resumeRun(state, now);
   runRepository.set(next);
+  void syncRunNotification(next, now);
+}
+
+/** "Pular fase" do intervalado: encerra a fase atual e anuncia a próxima. */
+export function skipPhaseSession(now: number = Date.now()) {
+  const state = runRepository.get();
+  if (!state) return;
+  const next = skipPhase(state, now);
+  runRepository.set(next);
+  announceIntervals(state, next);
   void syncRunNotification(next, now);
 }
 

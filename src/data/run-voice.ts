@@ -1,7 +1,8 @@
 import * as Speech from 'expo-speech';
 
 import type { RunState } from '../domain/run-tracker';
-import { autoPauseAnnouncement, splitAnnouncement } from '../domain/run-voice';
+import { expandPhases } from '../domain/interval-plan';
+import { autoPauseAnnouncement, intervalAnnouncement, phaseStartText, splitAnnouncement } from '../domain/run-voice';
 import { createVoicePreferencesRepository } from './repositories/voice-preferences-repository';
 import { storage } from './storage/mmkv';
 
@@ -15,7 +16,8 @@ const LANGUAGE = 'pt-BR';
  * um túnel), fala só a última.
  */
 export function announceSplit(before: RunState, after: RunState) {
-  if (after.splits.length <= before.splits.length) return;
+  // No intervalado, a voz guia as fases: as parciais não atropelam.
+  if (after.intervals || after.splits.length <= before.splits.length) return;
   const text = splitAnnouncement(after, voicePreferences.get());
   if (text) Speech.speak(text, { language: LANGUAGE });
 }
@@ -24,6 +26,19 @@ export function announceSplit(before: RunState, after: RunState) {
 export function announceAutoPause(before: RunState, after: RunState) {
   const text = autoPauseAnnouncement(before, after, voicePreferences.get());
   if (text) Speech.speak(text, { language: LANGUAGE });
+}
+
+/** Chamado pela tarefa do GPS: fases do intervalado, aviso de 10 s e pace na metade do tiro. */
+export function announceIntervals(before: RunState, after: RunState) {
+  const text = intervalAnnouncement(before, after, voicePreferences.get());
+  if (text) Speech.speak(text, { language: LANGUAGE });
+}
+
+/** Primeira fase, ao começar o intervalado. */
+export function announceFirstPhase(state: RunState) {
+  const phase = state.intervals ? expandPhases(state.intervals.plan)[0] : undefined;
+  if (!phase || !voicePreferences.get().enabled) return;
+  Speech.speak(phaseStartText(phase, state.intervals!.plan.reps), { language: LANGUAGE });
 }
 
 /** Amostra para o botão "Ouvir exemplo" dos Ajustes. */
