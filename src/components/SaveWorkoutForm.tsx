@@ -12,6 +12,7 @@ import { newRecords, personalRecords } from '../domain/personal-records';
 import { type Route, routePointCount, simplifyRoute } from '../domain/route';
 import { suggestedShoeId } from '../domain/shoe-mileage';
 import { weeklyStreak } from '../domain/streak';
+import { loadMessage, loadStatus } from '../domain/training-load';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
@@ -48,7 +49,9 @@ function currentStreak() {
 function joinMessages(...messages: (Celebration | null)[]): Celebration | null {
   const present = messages.filter((m) => m !== null);
   if (present.length === 0) return null;
-  return { text: present.map((m) => m.text).join('\n'), spoken: present.map((m) => m.spoken).join('. ') };
+  // Sem "!." na leitura: só põe ponto depois de frase que ainda não terminou.
+  const spoken = present.map((m) => m.spoken).reduce((acc, s) => `${acc}${/[.!?]$/.test(acc) ? '' : '.'} ${s}`);
+  return { text: present.map((m) => m.text).join('\n'), spoken };
 }
 
 export function SaveWorkoutForm({
@@ -91,6 +94,7 @@ export function SaveWorkoutForm({
     if (!terrain || saved || distanceKm === null || durationSeconds === null) return;
     const before = personalRecords(workoutRepository.list());
     const streakBefore = currentStreak();
+    const loadBefore = loadStatus(workoutRepository.list());
     const result = workoutRepository.create({
       date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
@@ -106,6 +110,7 @@ export function SaveWorkoutForm({
       const message = joinMessages(
         recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before),
         streakMessage(streakBefore, currentStreak()),
+        loadMessage(loadBefore, loadStatus(workoutRepository.list())),
       );
       setStatus('saved');
       setCelebration(message);

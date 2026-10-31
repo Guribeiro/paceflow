@@ -7,6 +7,7 @@ import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { RouteMap } from '../components/RouteMap';
 import { SplitList } from '../components/SplitList';
 import { StreakCard } from '../components/StreakCard';
+import { ZONE_TEXT } from '../components/TrainingLoadCard';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
 import { routeRepository } from '../data/routes';
 import { workoutRepository } from '../data/workouts';
@@ -18,6 +19,7 @@ import {
   spokenDuration,
 } from '../domain/pace';
 import { TERRAIN_LABELS, type Workout, splitUnit } from '../domain/workout';
+import { formatRatio } from '../domain/training-load';
 import { summarizeWeek } from '../domain/workout-summary';
 import { type Shoe, isActiveShoe } from '../domain/shoe';
 import { shoeMileage, shoeStatus } from '../domain/shoe-mileage';
@@ -25,6 +27,7 @@ import { useCurrentWeek } from '../hooks/useCurrentWeek';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
 import { useHasRoute, useRoute } from '../hooks/useRoute';
 import { useShoes } from '../hooks/useShoes';
+import { useTrainingLoad } from '../hooks/useTrainingLoad';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Button } from '../components/ui/Button';
@@ -157,6 +160,22 @@ function WorkoutItem({ workout, unit, shoeName }: { workout: Workout; unit: Dist
   );
 }
 
+/** Aviso no topo do diário quando a carga dos últimos 7 dias sobe rápido demais. */
+function LoadAlert() {
+  const status = useTrainingLoad();
+  if ((status.zone !== 'atencao' && status.zone !== 'alta') || status.ratio === null) return null;
+  const ratio = formatRatio(status.ratio);
+
+  return (
+    <Card variant="soft" accessibilityRole="alert" title="Carga de treino" icon="bolt">
+      <Text className="text-base text-ink dark:text-ink-dark">
+        <Text className="font-bold text-brand-ink dark:text-brand-ink-dark">{ZONE_TEXT[status.zone].title}</Text>: a
+        carga dos últimos 7 dias é {ratio} a sua média semanal. Um dia leve ou de descanso ajuda a evitar lesão.
+      </Text>
+    </Card>
+  );
+}
+
 /** Aviso no topo do diário para tênis ativos perto do limite ou acima dele. */
 function ShoeAlerts({ shoes, workouts, unit }: { shoes: Shoe[]; workouts: Workout[]; unit: DistanceUnit }) {
   const alerts = shoes
@@ -206,6 +225,7 @@ export function WorkoutLogScreen() {
               <ScreenHeader eyebrow="Seus treinos" title="Diário" />
               <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
               <StreakCard unit={unit} />
+              <LoadAlert />
               <ShoeAlerts shoes={shoes} workouts={workouts} unit={unit} />
               {workouts.length > 0 ? <SectionHeader level={2} icon="calendar">Histórico</SectionHeader> : null}
             </View>
