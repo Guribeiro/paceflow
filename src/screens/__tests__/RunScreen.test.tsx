@@ -256,7 +256,8 @@ describe('Correr: finalizada', () => {
     expect(saved).not.toHaveProperty('note');
     expect(saved.distanceMeters).toBeCloseTo(2400, 0);
     expect(runRepository.get()).toBeNull();
-    expect(screen.getByText('✓ Corrida salva no diário')).toBeOnTheScreen();
+    expect(screen.getByText(/^✓ Corrida salva no diário/)).toBeOnTheScreen();
+    expect(screen.getByText(/Semana garantida: sequência iniciada!/)).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Nova corrida' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Começar' })).toBeNull();
   });
@@ -270,7 +271,9 @@ describe('Correr: finalizada', () => {
 
     expect(screen.getByText(/Primeira marca nos 5 km: 16:40/)).toBeOnTheScreen();
     expect(
-      screen.getByLabelText('Corrida salva no diário. Primeira marca nos 5 km: 16 minutos e 40 segundos'),
+      screen.getByLabelText(
+        'Corrida salva no diário. Primeira marca nos 5 km: 16 minutos e 40 segundos. Semana garantida: sequência iniciada!',
+      ),
     ).toBeOnTheScreen();
   });
 

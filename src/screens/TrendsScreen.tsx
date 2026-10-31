@@ -8,9 +8,11 @@ import { RaceGoalCard } from '../components/RaceGoalCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
+import { streakLabel } from '../domain/streak';
 import { averagePace, comparePace, summarizeTrends, weeklyTotals } from '../domain/workout-trends';
 import { useLargeText } from '../hooks/useLargeText';
 import { usePreferredUnit } from '../hooks/usePreferredUnit';
+import { useStreak } from '../hooks/useStreak';
 import { useWeeklyGoal } from '../hooks/useWeeklyGoal';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { Card } from '../components/ui/Card';
@@ -28,6 +30,7 @@ export function TrendsScreen() {
   const large = useLargeText();
   const weeks = useMemo(() => weeklyTotals(workouts, new Date(), WEEKS), [workouts]);
   const trends = useMemo(() => summarizeTrends(weeks), [weeks]);
+  const streak = useStreak();
   const [selected, setSelected] = useState(WEEKS - 1);
 
   const paceIn = (secondsPerKm: number) => formatDuration(unit === 'mi' ? secondsPerKm * KM_PER_MILE : secondsPerKm);
@@ -70,6 +73,12 @@ export function TrendsScreen() {
                   label="Média semanal"
                   value={`${formatDistance(trends.averageWeeklyMeters ?? 0, unit)} ${unit}`}
                   detail={`em ${trends.activeWeeks} ${trends.activeWeeks === 1 ? 'semana ativa' : 'semanas ativas'}`}
+                />
+                <StatTile
+                  label="Sequência"
+                  value={String(streak.current)}
+                  suffix={streak.current === 1 ? 'semana' : 'semanas'}
+                  detail={`melhor: ${streakLabel(streak.best)}`}
                 />
                 {trends.bestWeek ? (
                   <StatTile

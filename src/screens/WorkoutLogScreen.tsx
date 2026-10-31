@@ -6,6 +6,7 @@ import { KeyboardAware } from '../components/KeyboardAware';
 import { EditWorkoutForm } from '../components/EditWorkoutForm';
 import { RouteMap } from '../components/RouteMap';
 import { SplitList } from '../components/SplitList';
+import { StreakCard } from '../components/StreakCard';
 import { WeekSummaryCard } from '../components/WeekSummaryCard';
 import { routeRepository } from '../data/routes';
 import { workoutRepository } from '../data/workouts';
@@ -200,6 +201,7 @@ export function WorkoutLogScreen() {
             <View className="mb-2 gap-4">
               <ScreenHeader eyebrow="Seus treinos" title="Diário" />
               <WeekSummaryCard summary={summary} unit={unit} goalMeters={goalMeters} />
+              <StreakCard unit={unit} />
               <ShoeAlerts shoes={shoes} workouts={workouts} unit={unit} />
               {workouts.length > 0 ? <SectionHeader level={2} icon="calendar">Histórico</SectionHeader> : null}
             </View>

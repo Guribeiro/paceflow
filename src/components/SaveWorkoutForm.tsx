@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Text } from 'react-native';
 
+import { preferencesRepository } from '../data/preferences';
 import { routeRepository } from '../data/routes';
 import { workoutRepository } from '../data/workouts';
 import { NOTE_MAX_LENGTH, type Terrain, type Workout } from '../domain/workout';
 import { dateOnDay, recentDays } from '../domain/workout-date';
 import { shoeRepository } from '../data/shoes';
+import { goalForWeek } from '../domain/goal-history';
 import { newRecords, personalRecords } from '../domain/personal-records';
 import { type Route, routePointCount, simplifyRoute } from '../domain/route';
 import { suggestedShoeId } from '../domain/shoe-mileage';
+import { weeklyStreak } from '../domain/streak';
 import { useShoes } from '../hooks/useShoes';
 import { ChoiceChips } from './ChoiceChips';
 import { Field } from './Field';
 import { recordMessage } from './PersonalRecordsCard';
 import { NO_SHOE, ShoePicker } from './ShoePicker';
+import { streakMessage } from './StreakCard';
 import { RPE_OPTIONS, TERRAIN_OPTIONS } from './workout-options';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -31,6 +35,20 @@ interface Props {
   route?: Route | null;
   /** Depois de salvar, com a comemoração de recorde (se houver). */
   onSaved?: (celebration: { text: string; spoken: string } | null) => void;
+}
+
+type Celebration = { text: string; spoken: string };
+
+function currentStreak() {
+  const history = preferencesRepository.getGoalHistory();
+  const goal = preferencesRepository.getWeeklyGoal();
+  return weeklyStreak(workoutRepository.list(), (week) => goalForWeek(history, week, goal));
+}
+
+function joinMessages(...messages: (Celebration | null)[]): Celebration | null {
+  const present = messages.filter((m) => m !== null);
+  if (present.length === 0) return null;
+  return { text: present.map((m) => m.text).join('\n'), spoken: present.map((m) => m.spoken).join('. ') };
 }
 
 export function SaveWorkoutForm({
@@ -72,6 +90,7 @@ export function SaveWorkoutForm({
   function save() {
     if (!terrain || saved || distanceKm === null || durationSeconds === null) return;
     const before = personalRecords(workoutRepository.list());
+    const streakBefore = currentStreak();
     const result = workoutRepository.create({
       date: dateOnDay(dayKey),
       distanceMeters: distanceKm * 1000,
@@ -84,7 +103,10 @@ export function SaveWorkoutForm({
     });
     if (result.ok) {
       if (route && routePointCount(route) >= 2) routeRepository.set(result.value.id, simplifyRoute(route));
-      const message = recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before);
+      const message = joinMessages(
+        recordMessage(newRecords(before, personalRecords(workoutRepository.list())), before),
+        streakMessage(streakBefore, currentStreak()),
+      );
       setStatus('saved');
       setCelebration(message);
       setSavedEffort(effortKey);
