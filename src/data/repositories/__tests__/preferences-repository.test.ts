@@ -86,6 +86,118 @@ describe('PreferencesRepository', () => {
     });
   });
 
+  describe('histórico da meta semanal', () => {
+    // Datas locais: quarta 04/11/2026 (semana de 02/11) e a quarta seguinte.
+    function setup(storage = new InMemoryStorage()) {
+      let today = new Date(2026, 10, 4, 10);
+      let clock = Date.parse('2026-11-04T13:00:00.000Z');
+      const repo = createPreferencesRepository(storage, {
+        today: () => today,
+        now: () => new Date((clock += 1000)).toISOString(),
+      });
+      return { storage, repo, setToday: (d: Date) => (today = d) };
+    }
+
+    const remote = (weeklyGoalMeters: number | null, updatedAt: string) => ({
+      id: 'preferences' as const,
+      unit: 'km' as const,
+      weeklyGoalMeters,
+      raceGoal: null,
+      createdAt: '2026-10-01T00:00:00.000Z',
+      updatedAt,
+      deletedAt: null,
+    });
+
+    it('começa vazio', () => {
+      expect(setup().repo.getGoalHistory()).toEqual([]);
+    });
+
+    it('ao mudar a meta, grava a segunda da semana local e semeia o passado com a meta anterior', () => {
+      const { storage, repo } = setup();
+      repo.setWeeklyGoal(20_000);
+      expect(repo.getGoalHistory()).toEqual([
+        { week: '0000-01-01', meters: null },
+        { week: '2026-11-02', meters: 20_000 },
+      ]);
+      // Persiste para a próxima abertura.
+      expect(createPreferencesRepository(storage).getGoalHistory()).toEqual(repo.getGoalHistory());
+    });
+
+    it('meta de uma versão antiga vale para as semanas passadas', () => {
+      const storage = new InMemoryStorage();
+      storage.set('prefs:v1:weeklyGoal', '10000');
+      const { repo } = setup(storage);
+      repo.setWeeklyGoal(15_000);
+      expect(repo.getGoalHistory()).toEqual([
+        { week: '0000-01-01', meters: 10_000 },
+        { week: '2026-11-02', meters: 15_000 },
+      ]);
+    });
+
+    it('a última mudança da semana vence, e outra semana ganha a sua', () => {
+      const { repo, setToday } = setup();
+      repo.setWeeklyGoal(20_000);
+      repo.setWeeklyGoal(25_000);
+      setToday(new Date(2026, 10, 8, 23)); // domingo, ainda a semana de 02/11
+      repo.setWeeklyGoal(30_000);
+      setToday(new Date(2026, 10, 11, 10));
+      repo.setWeeklyGoal(null);
+      expect(repo.getGoalHistory()).toEqual([
+        { week: '0000-01-01', meters: null },
+        { week: '2026-11-02', meters: 30_000 },
+        { week: '2026-11-09', meters: null },
+      ]);
+    });
+
+    it('gravar a mesma meta não mexe no histórico', () => {
+      const { repo, setToday } = setup();
+      repo.setWeeklyGoal(20_000);
+      const before = repo.getGoalHistory();
+      setToday(new Date(2026, 10, 11, 10));
+      repo.setWeeklyGoal(20_000);
+      expect(repo.getGoalHistory()).toBe(before);
+    });
+
+    it('devolve a mesma referência enquanto nada muda (useSyncExternalStore)', () => {
+      const { repo } = setup();
+      repo.setWeeklyGoal(20_000);
+      expect(repo.getGoalHistory()).toBe(repo.getGoalHistory());
+    });
+
+    it.each(['{quebrado', '"texto"', '[{"week":"ontem","meters":1}]'])('valor salvo inválido (%s) vira histórico vazio', (raw) => {
+      const storage = new InMemoryStorage();
+      storage.set('prefs:v1:weeklyGoalHistory', raw);
+      expect(createPreferencesRepository(storage).getGoalHistory()).toEqual([]);
+    });
+
+    it('instalação nova recebendo a conta não grava histórico', () => {
+      const { repo } = setup();
+      repo.importRecords([remote(30_000, '2026-11-01T00:00:00.000Z')], { origin: 'remote' });
+      expect(repo.getWeeklyGoal()).toBe(30_000);
+      expect(repo.getGoalHistory()).toEqual([]);
+    });
+
+    it('meta mais recente vinda da conta grava a mudança nesta semana', () => {
+      const { repo } = setup();
+      repo.setWeeklyGoal(20_000); // updatedAt 13:00:01
+      repo.importRecords([remote(30_000, '2026-11-04T14:00:00.000Z')], { origin: 'remote' });
+      expect(repo.getWeeklyGoal()).toBe(30_000);
+      expect(repo.getGoalHistory()).toEqual([
+        { week: '0000-01-01', meters: null },
+        { week: '2026-11-02', meters: 30_000 },
+      ]);
+    });
+
+    it('importação mais antiga que a local não grava histórico', () => {
+      const { repo } = setup();
+      repo.setWeeklyGoal(20_000);
+      const before = repo.getGoalHistory();
+      repo.importRecords([remote(30_000, '2026-11-04T12:00:00.000Z')], { origin: 'remote' });
+      expect(repo.getWeeklyGoal()).toBe(20_000);
+      expect(repo.getGoalHistory()).toBe(before);
+    });
+  });
+
   describe('prova-alvo', () => {
     const goal = { distanceKm: 21.0975, date: '2026-11-23', targetSeconds: 6300 };
 

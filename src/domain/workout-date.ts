@@ -7,7 +7,8 @@ export interface DayOption {
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-const keyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+/** Dia local (AAAA-MM-DD) de uma data. */
+export const keyOfDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 /** Dia local (AAAA-MM-DD) de uma data ISO. */
 export function dayKeyOf(iso: string): string {

@@ -1,6 +1,9 @@
 import type { DistanceUnit } from '../../domain/pace/units';
+import { type GoalHistory, parseGoalHistory, recordGoal } from '../../domain/goal-history';
 import { PREFERENCES_ID, type SyncedPreferences } from '../../domain/preferences';
 import { type RaceGoal, parseRaceGoal } from '../../domain/race-goal';
+import { keyOfDate } from '../../domain/workout-date';
+import { startOfWeek } from '../../domain/workout-summary';
 import type { KeyValueStorage } from '../storage/key-value';
 import type { ImportOptions } from './record-store';
 
@@ -10,6 +13,8 @@ const UNIT_KEY = 'prefs:v1:unit';
 const THEME_KEY = 'prefs:v1:theme';
 const WEEKLY_GOAL_KEY = 'prefs:v1:weeklyGoal';
 const RACE_GOAL_KEY = 'prefs:v1:raceGoal';
+// Metas por semana, para a sequência; fica só no aparelho.
+const GOAL_HISTORY_KEY = 'prefs:v1:weeklyGoalHistory';
 // Datas das preferências sincronizáveis (unidade, meta, prova). Ausentes =
 // nunca mudou: a instalação nova não sobe nada e recebe o que está na conta.
 const CREATED_AT_KEY = 'prefs:v1:createdAt';
@@ -33,6 +38,8 @@ export interface PreferencesRepository {
   /** Meta semanal em metros (independe da unidade exibida); null = sem meta. */
   getWeeklyGoal(): number | null;
   setWeeklyGoal(meters: number | null): void;
+  /** Mudanças da meta por semana; referência estável até mudar. */
+  getGoalHistory(): GoalHistory;
   /** Prova-alvo; referência estável até mudar. */
   getRaceGoal(): RaceGoal | null;
   setRaceGoal(goal: RaceGoal | null): void;
@@ -46,18 +53,29 @@ export interface PreferencesRepository {
 
 interface Deps {
   now?: () => string;
+  /** Data local usada para a semana do histórico da meta. */
+  today?: () => Date;
   /** Chamado ao mudar unidade, meta ou prova (o sync marca como pendente). */
   onLocalChange?: (ids: string[]) => void;
 }
 
 export function createPreferencesRepository(
   storage: KeyValueStorage,
-  { now = () => new Date().toISOString(), onLocalChange }: Deps = {},
+  { now = () => new Date().toISOString(), today = () => new Date(), onLocalChange }: Deps = {},
 ): PreferencesRepository {
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((listener) => listener());
   // Cache da prova-alvo pelo texto gravado: mesma referência enquanto não mudar.
   let raceGoalCache: { raw: string | undefined; value: RaceGoal | null } | null = null;
+  let goalHistoryCache: { raw: string | undefined; value: GoalHistory } | null = null;
+
+  /** Anota no histórico a meta desta semana, se mudou. Chamar antes de gravar a nova meta. */
+  function recordGoalChange(meters: number | null) {
+    const previous = repo.getWeeklyGoal();
+    if (previous === meters) return;
+    const week = keyOfDate(startOfWeek(today()));
+    storage.set(GOAL_HISTORY_KEY, JSON.stringify(recordGoal(repo.getGoalHistory(), week, meters, previous)));
+  }
 
   function set(key: string, value: string) {
     storage.set(key, value);
@@ -100,7 +118,21 @@ export function createPreferencesRepository(
     },
 
     setWeeklyGoal(meters) {
+      recordGoalChange(meters);
       setSynced(WEEKLY_GOAL_KEY, meters === null ? null : String(meters));
+    },
+
+    getGoalHistory() {
+      const raw = storage.getString(GOAL_HISTORY_KEY);
+      if (goalHistoryCache && goalHistoryCache.raw === raw) return goalHistoryCache.value;
+      let value: GoalHistory = [];
+      try {
+        value = raw === undefined ? [] : (parseGoalHistory(JSON.parse(raw)) ?? []);
+      } catch {
+        value = [];
+      }
+      goalHistoryCache = { raw, value };
+      return value;
     },
 
     getRaceGoal() {
@@ -145,6 +177,8 @@ export function createPreferencesRepository(
         const current = storage.getString(UPDATED_AT_KEY);
         if (current !== undefined && Date.parse(current) >= Date.parse(incoming.updatedAt)) continue;
         storage.set(UNIT_KEY, incoming.unit);
+        // Instalação nova recebendo a conta: sem histórico, vale a meta atual.
+        if (current !== undefined) recordGoalChange(incoming.weeklyGoalMeters);
         if (incoming.weeklyGoalMeters === null) storage.remove(WEEKLY_GOAL_KEY);
         else storage.set(WEEKLY_GOAL_KEY, String(incoming.weeklyGoalMeters));
         if (incoming.raceGoal === null) storage.remove(RACE_GOAL_KEY);
