@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAware } from '../components/KeyboardAware';
 import { PersonalRecordsCard } from '../components/PersonalRecordsCard';
 import { RaceGoalCard } from '../components/RaceGoalCard';
+import { TrainingLoadCard } from '../components/TrainingLoadCard';
 import { TrainingPlan } from '../components/TrainingPlan';
 import { WeeklyBarChart, weekLabel } from '../components/WeeklyBarChart';
 import { KM_PER_MILE, formatDistance, formatDuration } from '../domain/pace';
@@ -121,6 +122,8 @@ export function TrendsScreen() {
                   ))}
                 </View>
               </Disclosure>
+
+              <TrainingLoadCard />
             </>
           )}
         </ScrollView>
