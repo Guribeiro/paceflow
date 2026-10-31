@@ -5,7 +5,7 @@
  */
 
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration } from './pace';
-import { type RunState, currentPace, elapsedMs, isAutoPaused, splitDurations } from './run-tracker';
+import { type RunState, currentPace, elapsedMs, isAutoPaused, phaseProgress, splitDurations } from './run-tracker';
 import { splitUnit } from './workout';
 
 export type RunNotificationStatus = 'running' | 'paused' | 'autoPaused';
@@ -19,9 +19,12 @@ export interface RunNotificationProps {
   unit: DistanceUnit;
   /** Pace atual por unidade, ex.: "5:12"; null parado ou sem deslocamento suficiente. */
   pace: string | null;
-  /** Última parcial fechada, ex.: "Parcial 4: 5:08"; null antes da primeira. */
+  /**
+   * Última parcial fechada, ex.: "Parcial 4: 5:08"; null antes da primeira. No
+   * intervalado, a fase atual: "Tiro 3/8 · faltam 220 m".
+   */
   lastSplit: string | null;
-  /** Fração (0–1) da parcial em andamento. */
+  /** Fração (0–1) da parcial em andamento (no intervalado, da fase). */
   splitProgress: number;
 }
 
@@ -45,15 +48,34 @@ export function runNotificationProps(state: RunState, now: number): RunNotificat
   const pace = paused || autoPaused ? null : currentPace(state);
   const splits = splitDurations(state);
   const last = splits.at(-1);
+  const phase = state.intervals ? phaseText(state, now) : null;
   return {
     status: paused ? 'paused' : autoPaused ? 'autoPaused' : 'running',
     time: formatDuration(Math.floor(elapsedMs(state, now) / 1000)),
     distance: formatDistance(state.distanceMeters, unit),
     unit,
     pace: pace === null ? null : formatDuration(Math.round(perUnit(pace, unit))),
-    lastSplit: last === undefined ? null : `Parcial ${splits.length}: ${formatDuration(Math.round(last))}`,
-    splitProgress: Math.min(1, Math.max(0, (state.distanceMeters % state.splitMeters) / state.splitMeters)),
+    lastSplit: phase
+      ? phase.text
+      : last === undefined
+        ? null
+        : `Parcial ${splits.length}: ${formatDuration(Math.round(last))}`,
+    splitProgress:
+      phase?.fraction ?? Math.min(1, Math.max(0, (state.distanceMeters % state.splitMeters) / state.splitMeters)),
   };
+}
+
+const PHASE_NAMES = { warmup: 'Aquecimento', recovery: 'Recuperação', cooldown: 'Desaquecimento' } as const;
+
+/** "Tiro 3/8 · faltam 220 m", "Recuperação · 0:42"; "Treino concluído" depois da última fase. */
+function phaseText(state: RunState, now: number): { text: string; fraction: number } {
+  const progress = phaseProgress(state, now);
+  if (!progress) return { text: 'Treino concluído', fraction: 1 };
+  const { phase, remaining, fraction } = progress;
+  const name = phase.kind === 'work' ? `Tiro ${phase.rep}/${state.intervals!.plan.reps}` : PHASE_NAMES[phase.kind];
+  const left =
+    phase.measure.kind === 'distance' ? `faltam ${Math.ceil(remaining)} m` : formatDuration(Math.ceil(remaining));
+  return { text: `${name} · ${left}`, fraction };
 }
 
 export function runSummaryProps(state: RunState): RunSummaryProps {

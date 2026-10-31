@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -63,21 +64,34 @@ function SplitTable({ unit, suggestedSecondsPerKm }: Props) {
         </Text>
       ) : null}
       {secondsPerKm ? (
-        <View className="flex-row flex-wrap rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
-          {splitTimes(secondsPerKm).map(({ distanceMeters, seconds }) => (
-            <View
-              key={distanceMeters}
-              accessible
-              accessibilityLabel={`${distanceMeters} metros: ${spokenDuration(seconds)}`}
-              className="min-w-20 flex-1 items-center gap-1 p-3"
-            >
-              <Text className="text-sm font-semibold text-muted dark:text-muted-dark">{distanceMeters} m</Text>
-              <Text className="text-2xl font-bold text-ink dark:text-ink-dark" style={display}>
-                {formatDuration(seconds)}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <>
+          <View className="flex-row flex-wrap rounded-2xl border-2 border-surface-2 bg-surface dark:border-surface-2-dark dark:bg-surface-dark">
+            {splitTimes(secondsPerKm).map(({ distanceMeters, seconds }) => (
+              <View
+                key={distanceMeters}
+                accessible
+                accessibilityLabel={`${distanceMeters} metros: ${spokenDuration(seconds)}`}
+                className="min-w-20 flex-1 items-center gap-1 p-3"
+              >
+                <Text className="text-sm font-semibold text-muted dark:text-muted-dark">{distanceMeters} m</Text>
+                <Text className="text-2xl font-bold text-ink dark:text-ink-dark" style={display}>
+                  {formatDuration(seconds)}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Button
+            label="Correr intervalado com este pace"
+            variant="secondary"
+            onPress={() =>
+              // envio: cada toque é um pedido novo, mesmo com o mesmo pace.
+              router.navigate({
+                pathname: '/correr',
+                params: { alvo: String(Math.round(secondsPerKm)), envio: String(Date.now()) },
+              })
+            }
+          />
+        </>
       ) : (
         <Text className="text-base text-muted dark:text-muted-dark">
           Informe um pace-alvo, ou calcule um esforço no modo Ritmo para usar o pace de intervalado.
