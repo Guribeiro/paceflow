@@ -28,6 +28,7 @@ describe('syncWeekWidget', () => {
       lastPace: '5:00/km',
       goal: null,
       goalRatio: null,
+      streak: 'Sequência: 1 semana',
     });
   });
 

@@ -1,4 +1,6 @@
+import { type GoalHistory, goalForWeek } from './goal-history';
 import { type DistanceUnit, KM_PER_MILE, formatDistance, formatDuration } from './pace';
+import { streakLabel, weeklyStreak } from './streak';
 import type { Workout } from './workout';
 import { goalProgress } from './weekly-goal';
 import { startOfWeek, summarizeWeek } from './workout-summary';
@@ -16,6 +18,8 @@ export interface WeekWidgetProps {
   goal: string | null;
   /** 0–1 para a barra de progresso; null sem meta. */
   goalRatio: number | null;
+  /** "Sequência: 3 semanas"; null sem sequência. */
+  streak: string | null;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -30,6 +34,7 @@ export function buildWeekWidgetProps(
   unit: DistanceUnit,
   now: Date = new Date(),
   goalMeters: number | null = null,
+  goalHistory: GoalHistory = [],
 ): WeekWidgetProps {
   const monday = startOfWeek(now);
   const summary = summarizeWeek(workouts, now);
@@ -54,6 +59,8 @@ export function buildWeekWidgetProps(
     goal = progress.reached ? `Meta de ${target} batida!` : `${progress.percent}% da meta de ${target}`;
   }
 
+  const { current } = weeklyStreak(workouts, (week) => goalForWeek(goalHistory, week, goalMeters), now);
+
   return {
     weekLabel: `Semana de ${pad2(monday.getDate())}/${pad2(monday.getMonth() + 1)}`,
     distance: formatDistance(summary.distanceMeters, unit),
@@ -62,5 +69,6 @@ export function buildWeekWidgetProps(
     lastPace,
     goal,
     goalRatio,
+    streak: current > 0 ? `Sequência: ${streakLabel(current)}` : null,
   };
 }

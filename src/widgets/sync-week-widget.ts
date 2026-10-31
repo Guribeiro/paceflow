@@ -17,6 +17,7 @@ export async function syncWeekWidget(now: Date = new Date(), load: () => Promise
         preferencesRepository.getUnit(),
         now,
         preferencesRepository.getWeeklyGoal(),
+        preferencesRepository.getGoalHistory(),
       ),
     );
   } catch (error) {

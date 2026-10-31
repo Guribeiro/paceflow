@@ -50,6 +50,11 @@ const WeekWidget = (props: WeekWidgetProps, environment: WidgetEnvironment) => {
             {props.goal}
           </Text>
         ) : null}
+        {props.streak ? (
+          <Text color={accent} maxLines={1} style={{ fontSize: 14, fontWeight: 'bold' }}>
+            {props.streak}
+          </Text>
+        ) : null}
         {props.goalRatio !== null ? (
           <Row>
             {Array.from({ length: 10 }, (_, i) => (
@@ -73,4 +78,5 @@ export default createWidget<WeekWidgetProps>('WeekWidget', WeekWidget, {
   lastPace: null,
   goal: null,
   goalRatio: null,
+  streak: null,
 });

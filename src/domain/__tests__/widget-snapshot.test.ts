@@ -31,6 +31,7 @@ describe('buildWeekWidgetProps', () => {
       lastPace: null,
       goal: null,
       goalRatio: null,
+      streak: null,
     });
   });
 
@@ -90,5 +91,25 @@ describe('buildWeekWidgetProps', () => {
     expect(buildWeekWidgetProps(workouts, 'mi', now, 16093.44).goal).toBe('77% da meta de 10,00 mi');
     expect(buildWeekWidgetProps(workouts, 'km', now, null).goal).toBeNull();
   });
-});
 
+  it('mostra a sequência de semanas, contando a atual garantida', () => {
+    const workouts = [workout(local(2026, 10, 14)), workout(local(2026, 10, 21)), workout(local(2026, 10, 27))];
+    expect(buildWeekWidgetProps(workouts, 'km', now).streak).toBe('Sequência: 3 semanas');
+    expect(buildWeekWidgetProps(workouts.slice(2), 'km', now).streak).toBe('Sequência: 1 semana');
+  });
+
+  it('semana atual em aberto mantém a sequência das anteriores; sem sequência, nada', () => {
+    expect(buildWeekWidgetProps([workout(local(2026, 10, 21))], 'km', now).streak).toBe('Sequência: 1 semana');
+    expect(buildWeekWidgetProps([workout(local(2026, 10, 14))], 'km', now).streak).toBeNull();
+  });
+
+  it('a sequência usa a meta e o histórico da meta', () => {
+    const workouts = [workout(local(2026, 10, 21), { distanceMeters: 12000 })];
+    expect(buildWeekWidgetProps(workouts, 'km', now, 20000).streak).toBeNull();
+    const history = [
+      { week: '0000-01-01', meters: 10000 },
+      { week: '2026-10-26', meters: 20000 },
+    ];
+    expect(buildWeekWidgetProps(workouts, 'km', now, 20000, history).streak).toBe('Sequência: 1 semana');
+  });
+});
