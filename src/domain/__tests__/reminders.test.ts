@@ -6,6 +6,7 @@ import {
   parseTime,
   planReminders,
 } from '../reminders';
+import { KM_PER_MILE } from '../pace/units';
 import type { Workout } from '../workout';
 
 // Quarta-feira, 04/11/2026, 10h (horário local).
@@ -142,6 +143,70 @@ describe('planReminders', () => {
         body: 'Faltam 8,5 km para a meta de 20 km. Ainda dá tempo até domingo!',
       },
     ]);
+  });
+
+  describe('o que falta arredonda para cima, com uma casa decimal', () => {
+    const on = prefs({ weeklyGoal: true, streak: true });
+    // Meta em milhas, gravada em metros como o app grava: n × 1,609344 × 1000.
+    const miles = (n: number) => n * KM_PER_MILE * 1000;
+    // Semana de 26/10 cumprida (mantém a sequência); a atual (02/11) com `meters`.
+    const week = (meters: number, goal: number) => [
+      workout(new Date(2026, 9, 28, 7), goal),
+      workout(new Date(2026, 10, 2, 7), meters),
+    ];
+    const bodies = (meters: number, goal: number, unit: 'km' | 'mi' = 'km') =>
+      planReminders(on, ctx({ weeklyGoalMeters: goal, workouts: week(meters, goal), unit }), NOW).map((r) => [
+        r.title,
+        r.body,
+      ]);
+
+    it('faltando 30 m, diz "0,1 km" nos dois lembretes, nunca "0 km"', () => {
+      expect(bodies(19_970, 20_000)).toEqual([
+        ['Meta da semana', 'Faltam 0,1 km para a meta de 20 km. Ainda dá tempo até domingo!'],
+        ['Sequência em risco', 'Sua sequência de 1 semana termina hoje. Faltam 0,1 km para mantê-la.'],
+      ]);
+    });
+
+    it('faltando exatamente 4 km, diz "4 km", sem ",0"', () => {
+      expect(bodies(16_000, 20_000)).toEqual([
+        ['Meta da semana', 'Faltam 4 km para a meta de 20 km. Ainda dá tempo até domingo!'],
+        ['Sequência em risco', 'Sua sequência de 1 semana termina hoje. Faltam 4 km para mantê-la.'],
+      ]);
+    });
+
+    it('faltando 3,84 km, sobe para "3,9 km"', () => {
+      expect(bodies(16_160, 20_000)).toEqual([
+        ['Meta da semana', 'Faltam 3,9 km para a meta de 20 km. Ainda dá tempo até domingo!'],
+        ['Sequência em risco', 'Sua sequência de 1 semana termina hoje. Faltam 3,9 km para mantê-la.'],
+      ]);
+    });
+
+    it('em milhas: faltando poucos metros diz "0,1 mi"', () => {
+      expect(bodies(miles(20) - 30, miles(20), 'mi')).toEqual([
+        ['Meta da semana', 'Faltam 0,1 mi para a meta de 20 mi. Ainda dá tempo até domingo!'],
+        ['Sequência em risco', 'Sua sequência de 1 semana termina hoje. Faltam 0,1 mi para mantê-la.'],
+      ]);
+    });
+
+    it('em milhas: faltando exatamente 4 mi não vira "4,1 mi" por erro de ponto flutuante', () => {
+      // 14 mi − 10 mi em metros dá 4,00000000000001 mi.
+      expect(bodies(miles(10), miles(14), 'mi')).toEqual([
+        ['Meta da semana', 'Faltam 4 mi para a meta de 14 mi. Ainda dá tempo até domingo!'],
+        ['Sequência em risco', 'Sua sequência de 1 semana termina hoje. Faltam 4 mi para mantê-la.'],
+      ]);
+    });
+
+    it('a meta em si usa o arredondamento normal', () => {
+      const meta = (goal: number) =>
+        planReminders(
+          prefs({ weeklyGoal: true }),
+          ctx({ weeklyGoalMeters: goal, workouts: [workout(new Date(2026, 10, 2, 7), 10_000)] }),
+          NOW,
+        )[0].body;
+      expect(meta(32_500)).toBe('Faltam 22,5 km para a meta de 32,5 km. Ainda dá tempo até domingo!');
+      // 32,54 km: a meta arredonda para 32,5; o que falta (22,54) sobe para 22,6.
+      expect(meta(32_540)).toBe('Faltam 22,6 km para a meta de 32,5 km. Ainda dá tempo até domingo!');
+    });
   });
 
   it('meta semanal: some quando a meta é batida, sem meta ou depois de sábado', () => {

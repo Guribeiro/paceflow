@@ -90,6 +90,17 @@ const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(
 const at = (day: Date, hour: number, minute = 0) =>
   new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute);
 
+/**
+ * Uma casa decimal, sem ",0": "8 km", "32,5 km". O que falta arredonda para
+ * cima, para nunca virar "0 km" quando ainda faltam alguns metros.
+ */
+function shortDistance(meters: number, unit: DistanceUnit, { roundUp = false } = {}): string {
+  const tenths = distanceInUnit(meters, unit) * 10;
+  // Folga de ponto flutuante: 4 mi gravadas em metros voltam como 4,00000000000001.
+  const value = (roundUp ? Math.ceil(tenths - 1e-9) : Math.round(tenths)) / 10;
+  return `${String(value).replace('.', ',')} ${unit}`;
+}
+
 const shortDate = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
 
 /** Segunda primeiro: o longão fica para o último dia de treino da semana. */
@@ -150,11 +161,8 @@ function weeklyGoalReminder(ctx: ReminderContext, now: Date): Reminder[] {
   const date = at(saturday, GOAL_REMINDER.hour);
   const progress = goalProgress(summarizeWeek(ctx.workouts, now).distanceMeters, ctx.weeklyGoalMeters);
   if (date <= now || progress.reached) return [];
-  // Uma casa decimal, sem ",0": "8 km", "32,5 km".
-  const short = (meters: number) =>
-    `${String(Number(distanceInUnit(meters, ctx.unit).toFixed(1))).replace('.', ',')} ${ctx.unit}`;
-  const remaining = short(progress.remainingMeters);
-  const goal = short(ctx.weeklyGoalMeters);
+  const remaining = shortDistance(progress.remainingMeters, ctx.unit, { roundUp: true });
+  const goal = shortDistance(ctx.weeklyGoalMeters, ctx.unit);
   return [
     {
       id: `meta:${dateKey(saturday)}`,
@@ -177,7 +185,7 @@ function streakReminder(ctx: ReminderContext, now: Date): Reminder[] {
   const remaining =
     streak.remainingMeters === null
       ? 'Uma corrida mantém a sequência.'
-      : `Faltam ${String(Number(distanceInUnit(streak.remainingMeters, ctx.unit).toFixed(1))).replace('.', ',')} ${ctx.unit} para mantê-la.`;
+      : `Faltam ${shortDistance(streak.remainingMeters, ctx.unit, { roundUp: true })} para mantê-la.`;
   return [
     {
       id: `sequencia:${dateKey(sunday)}`,
